@@ -6,8 +6,13 @@ export default defineNuxtConfig({
   runtimeConfig: {
     googleApiKey: process.env.GOOGLE_API_KEY || 'AIzaSyB6QzeBAKmSSADx4rZ7mg1h0osi6bqzXGw',
     public: {
-      supabaseUrl: process.env.SUPABASE_URL,
-      supabaseKey: process.env.SUPABASE_KEY
+      // Supabase Konfiguration
+      supabaseHost: process.env.SUPABASEHOST,
+      supabasePort: process.env.SUPABASEPORT,
+      supabaseDatabase: process.env.SUPABASEDATABASE,
+      supabaseUser: process.env.SUPABASEUSER,
+      supabasePoolMode: process.env.SUPABASEPOOLMODE,
+      supabaseKey: process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY
     }
   },
   supabase: {

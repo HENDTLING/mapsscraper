@@ -1,9 +1,26 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.SUPABASE_URL!
-const supabaseKey = process.env.SUPABASE_KEY!
+// Verwende die spezifischen Environment Variables
+const supabaseHost = process.env.SUPABASEHOST!
+const supabasePort = process.env.SUPABASEPORT!
+const supabaseDatabase = process.env.SUPABASEDATABASE!
+const supabaseUser = process.env.SUPABASEUSER!
+const supabasePoolMode = process.env.SUPABASEPOOLMODE!
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+// Konstruiere die Supabase URL
+const supabaseUrl = `https://${supabaseHost}:${supabasePort}`
+const supabaseKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY!
+
+export const supabase = createClient(supabaseUrl, supabaseKey, {
+  db: {
+    schema: 'public'
+  },
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
+  }
+})
 
 // Typen für unsere Tabellen
 export interface Lead {

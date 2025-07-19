@@ -16,16 +16,20 @@ Ein professionelles Lead-Management-System für Google Maps Daten-Sammlung und C
 ### 1. Supabase Setup
 
 1. Gehe zu [supabase.com](https://supabase.com) und erstelle ein neues Projekt
-2. Kopiere die URL und den anon/public key aus den Projekteinstellungen
+2. Kopiere die Verbindungsdaten aus den Projekteinstellungen
 3. Erstelle eine `.env` Datei im Root-Verzeichnis:
 
 ```bash
 # Supabase Configuration
-SUPABASE_URL=your_supabase_url_here
-SUPABASE_KEY=your_supabase_anon_key_here
+SUPABASEHOST=your_supabase_host
+SUPABASEPORT=your_supabase_port
+SUPABASEDATABASE=your_database_name
+SUPABASEUSER=your_username
+SUPABASEPOOLMODE=your_pool_mode
+SUPABASE_KEY=your_supabase_anon_key
 
 # Google API Key
-GOOGLE_API_KEY=your_google_api_key_here
+GOOGLE_API_KEY=your_google_api_key
 ```
 
 ### 2. Datenbank-Schema
