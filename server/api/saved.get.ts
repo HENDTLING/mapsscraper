@@ -1,34 +1,20 @@
-import db from '../utils/database.js';
+import { getLeads } from '~/server/utils/supabase'
 
 export default defineEventHandler(async (event) => {
   try {
-    // Alle gespeicherten Suchen mit Ergebnisanzahl abrufen
-    const searchesStmt = db.prepare(`
-      SELECT 
-        s.id,
-        s.query,
-        s.location,
-        s.created_at,
-        COUNT(r.id) as results_count
-      FROM searches s
-      LEFT JOIN results r ON s.id = r.search_id
-      WHERE s.workspace_id = 1
-      GROUP BY s.id
-      ORDER BY s.created_at DESC
-    `);
-
-    const searches = searchesStmt.all();
-
+    const leads = await getLeads()
+    
     return {
       success: true,
-      searches: searches
-    };
-
+      data: leads
+    }
   } catch (error) {
-    console.error('Fehler beim Abrufen der gespeicherten Suchen:', error);
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'Fehler beim Abrufen der Daten'
-    });
+    console.error('Fehler beim Laden der gespeicherten Leads:', error)
+    
+    return {
+      success: false,
+      error: 'Fehler beim Laden der gespeicherten Leads',
+      details: error instanceof Error ? error.message : 'Unbekannter Fehler'
+    }
   }
-}); 
+}) 

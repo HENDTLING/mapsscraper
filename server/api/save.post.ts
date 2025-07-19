@@ -1,54 +1,53 @@
-import db from '../utils/database.js';
+import { createLead } from '~/server/utils/supabase'
 
 export default defineEventHandler(async (event) => {
   try {
-    const body = await readBody(event);
-    const { query, location, results } = body;
-
-    // Suche in Datenbank speichern
-    const searchStmt = db.prepare(`
-      INSERT INTO searches (workspace_id, query, location) 
-      VALUES (?, ?, ?)
-    `);
+    const body = await readBody(event)
     
-    const searchResult = searchStmt.run(1, query, location);
-    const searchId = searchResult.lastInsertRowid;
-
-    // Ergebnisse in Datenbank speichern
-    const resultStmt = db.prepare(`
-      INSERT INTO results (
-        workspace_id, search_id, place_id, name, address, phone, website, 
-        rating, website_quality, website_quality_score
-      ) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-
-    for (const result of results) {
-      resultStmt.run(
-        1,
-        searchId,
-        result.place_id,
-        result.name,
-        result.address,
-        result.phone,
-        result.website,
-        result.rating,
-        result.website_quality,
-        result.website_quality_score
-      );
+    if (!body.leads || !Array.isArray(body.leads)) {
+      return {
+        success: false,
+        error: 'Keine Leads zum Speichern übergeben'
+      }
     }
 
+    const savedLeads = []
+    
+    for (const lead of body.leads) {
+      try {
+        const leadData = {
+          name: lead.name || 'Unbekannt',
+          email: lead.email || null,
+          phone: lead.phone || null,
+          website: lead.website || null,
+          address: lead.address || null,
+          business_category: lead.business_category || null,
+          lead_score: lead.lead_score || 0,
+          status: 'Neu',
+          urgency_level: 'Niedrig',
+          estimated_budget: lead.estimated_budget || null,
+          notes: lead.notes || null
+        }
+        
+        const savedLead = await createLead(leadData)
+        savedLeads.push(savedLead)
+      } catch (error) {
+        console.error(`Fehler beim Speichern von Lead ${lead.name}:`, error)
+      }
+    }
+    
     return {
       success: true,
-      searchId: searchId,
-      message: 'Suche und Ergebnisse erfolgreich gespeichert'
-    };
-
+      message: `${savedLeads.length} Leads erfolgreich gespeichert`,
+      data: savedLeads
+    }
   } catch (error) {
-    console.error('Fehler beim Speichern:', error);
-    throw createError({
-      statusCode: 500,
-      statusMessage: 'Fehler beim Speichern der Daten'
-    });
+    console.error('Fehler beim Speichern der Leads:', error)
+    
+    return {
+      success: false,
+      error: 'Fehler beim Speichern der Leads',
+      details: error instanceof Error ? error.message : 'Unbekannter Fehler'
+    }
   }
-}); 
+}) 
