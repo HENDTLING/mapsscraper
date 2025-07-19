@@ -7,8 +7,9 @@ const supabaseDatabase = process.env.SUPABASEDATABASE!
 const supabaseUser = process.env.SUPABASEUSER!
 const supabasePoolMode = process.env.SUPABASEPOOLMODE!
 
-// Konstruiere die Supabase URL
-const supabaseUrl = `https://${supabaseHost}:${supabasePort}`
+// Konstruiere die Supabase URL korrekt
+// Verwende die Project URL statt Host:Port Kombination
+const supabaseUrl = `https://${supabaseHost.replace('.pooler.supabase.com', '.supabase.co')}`
 
 // Verwende Secret Key für Server-Side Operations (höhere Berechtigungen)
 // Priorität: Neue API Keys > Legacy Keys

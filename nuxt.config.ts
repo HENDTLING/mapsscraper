@@ -19,7 +19,9 @@ export default defineNuxtConfig({
     supabaseSecret: process.env.SUPABASE_API_SECRET || process.env.SUPABASE_SECRET
   },
   supabase: {
-    redirect: false
+    redirect: false,
+    url: process.env.SUPABASEHOST ? `https://${process.env.SUPABASEHOST.replace('.pooler.supabase.com', '.supabase.co')}` : undefined,
+    key: process.env.SUPABASE_API_PUB || process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY
   },
   app: {
     head: {
