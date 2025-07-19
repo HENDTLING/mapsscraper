@@ -26,6 +26,12 @@ SUPABASEPORT=5432
 SUPABASEDATABASE=postgres
 SUPABASEUSER=postgres
 SUPABASEPOOLMODE=transaction
+
+# API Keys (Neue Keys - Empfohlen)
+SUPABASE_API_PUB=your_supabase_api_public_key
+SUPABASE_API_SECRET=your_supabase_api_secret_key
+
+# Legacy Keys (Fallback)
 SUPABASE_KEY=your_supabase_anon_key
 SUPABASE_SECRET=your_supabase_service_role_key
 
@@ -34,8 +40,9 @@ GOOGLE_API_KEY=your_google_api_key_here
 ```
 
 **Wichtig**: 
-- `SUPABASE_KEY` = anon public key (für Client-Side)
-- `SUPABASE_SECRET` = service role key (für Server-Side, höhere Berechtigungen)
+- **Neue API Keys** (empfohlen): `SUPABASE_API_PUB` und `SUPABASE_API_SECRET`
+- **Legacy Keys** (Fallback): `SUPABASE_KEY` und `SUPABASE_SECRET`
+- Public Keys sind für Client-Side, Secret Keys für Server-Side
 
 ### 2. Datenbank-Schema
 
