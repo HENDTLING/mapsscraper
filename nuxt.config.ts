@@ -13,7 +13,9 @@ export default defineNuxtConfig({
       supabaseUser: process.env.SUPABASEUSER,
       supabasePoolMode: process.env.SUPABASEPOOLMODE,
       supabaseKey: process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY
-    }
+    },
+    // Server-side nur (nicht öffentlich)
+    supabaseSecret: process.env.SUPABASE_SECRET
   },
   supabase: {
     redirect: false

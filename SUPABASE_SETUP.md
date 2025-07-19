@@ -28,6 +28,7 @@
 2. Kopiere:
    - **Project URL**: `https://xxxxxxxxxxxxx.supabase.co`
    - **anon public key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+   - **service_role key**: `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` (Secret Key)
 
 ### 4. Environment Variables setzen
 
@@ -40,11 +41,16 @@ SUPABASEPORT=5432
 SUPABASEDATABASE=postgres
 SUPABASEUSER=postgres
 SUPABASEPOOLMODE=transaction
-SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...  # anon public key
+SUPABASE_SECRET=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...  # service_role key
 
 # Google API Key
 GOOGLE_API_KEY=your_google_api_key_here
 ```
+
+**Wichtig**: 
+- `SUPABASE_KEY` = anon public key (für Client-Side)
+- `SUPABASE_SECRET` = service role key (für Server-Side, höhere Berechtigungen)
 
 ### 5. Datenbank-Schema erstellen
 
@@ -88,6 +94,7 @@ Gehe zu `http://localhost:3000` und teste:
 ### Problem: "Permission denied"
 - Prüfe ob Row Level Security Policies erstellt wurden
 - Stelle sicher, dass die API Keys korrekt sind
+- Verwende den Service Role Key für Server-Side Operations
 
 ## 📊 Erwartete Ergebnisse
 

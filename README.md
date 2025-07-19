@@ -22,15 +22,20 @@ Ein professionelles Lead-Management-System für Google Maps Daten-Sammlung und C
 ```bash
 # Supabase Configuration
 SUPABASEHOST=your_supabase_host
-SUPABASEPORT=your_supabase_port
-SUPABASEDATABASE=your_database_name
-SUPABASEUSER=your_username
-SUPABASEPOOLMODE=your_pool_mode
+SUPABASEPORT=5432
+SUPABASEDATABASE=postgres
+SUPABASEUSER=postgres
+SUPABASEPOOLMODE=transaction
 SUPABASE_KEY=your_supabase_anon_key
+SUPABASE_SECRET=your_supabase_service_role_key
 
 # Google API Key
-GOOGLE_API_KEY=your_google_api_key
+GOOGLE_API_KEY=your_google_api_key_here
 ```
+
+**Wichtig**: 
+- `SUPABASE_KEY` = anon public key (für Client-Side)
+- `SUPABASE_SECRET` = service role key (für Server-Side, höhere Berechtigungen)
 
 ### 2. Datenbank-Schema
 

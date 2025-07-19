@@ -9,7 +9,9 @@ const supabasePoolMode = process.env.SUPABASEPOOLMODE!
 
 // Konstruiere die Supabase URL
 const supabaseUrl = `https://${supabaseHost}:${supabasePort}`
-const supabaseKey = process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY!
+
+// Verwende Secret Key für Server-Side Operations (höhere Berechtigungen)
+const supabaseKey = process.env.SUPABASE_SECRET || process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   db: {
