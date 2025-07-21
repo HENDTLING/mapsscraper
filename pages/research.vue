@@ -97,12 +97,15 @@
                   
                   <div class="filter-group">
                     <label>Webseiten-Qualität</label>
-                    <select v-model="websiteQuality" class="select filter-select">
-                      <option value="all">Alle</option>
-                      <option value="high">Hoch (>80)</option>
-                      <option value="medium">Mittel (50-80)</option>
-                      <option value="low">Niedrig (<50)</option>
-                    </select>
+                    <div class="select-wrapper">
+                      <select v-model="websiteQuality" class="select filter-select">
+                        <option value="all">Alle</option>
+                        <option value="high">Hoch (&gt;80)</option>
+                        <option value="medium">Mittel (50-80)</option>
+                        <option value="low">Niedrig (&lt;50)</option>
+                      </select>
+                      <span class="select-arrow material-icons">expand_more</span>
+                    </div>
                   </div>
                   
                   <div class="filter-group">
@@ -116,12 +119,15 @@
                   
                   <div class="filter-group">
                     <label>Max. Ergebnisse</label>
-                    <select v-model="maxResults" class="select filter-select">
-                      <option value="10">10</option>
-                      <option value="25">25</option>
-                      <option value="50">50</option>
-                      <option value="100">100</option>
-                    </select>
+                    <div class="select-wrapper">
+                      <select v-model="maxResults" class="select filter-select">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                      </select>
+                      <span class="select-arrow material-icons">expand_more</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -190,7 +196,7 @@
                 :key="lead.id"
                 class="lead-card"
               >
-                <div class="lead-header">
+                <div class="lead-card-header">
                   <div class="lead-avatar">
                     <img 
                       v-if="lead.logo" 
@@ -202,64 +208,60 @@
                       {{ getInitials(lead.name) }}
                     </div>
                   </div>
-                  <div class="lead-info">
-                    <h4 class="lead-name">{{ lead.name }}</h4>
-                    <p class="lead-category">{{ lead.category }}</p>
-                    <div class="lead-rating" v-if="lead.rating">
-                      <span class="stars">{{ '★'.repeat(Math.floor(lead.rating)) }}{{ '☆'.repeat(5 - Math.floor(lead.rating)) }}</span>
-                      <span class="rating-text">{{ lead.rating }} ({{ lead.review_count || 0 }} Bewertungen)</span>
-                    </div>
-                  </div>
-                  <div class="lead-actions">
-                    <button
-                      v-if="!isLeadSaved(lead)"
-                      @click="saveLead(lead)"
-                      class="btn-primary action-btn"
-                      :disabled="savingLeadIds.includes(lead.place_id)"
-                    >
-                      <span v-if="savingLeadIds.includes(lead.place_id)" class="material-icons loading-spinner">hourglass_empty</span>
-                      <span v-else class="material-icons">save</span>
-                    </button>
-                    <span v-else class="saved-check">
-                      <span class="material-icons">check</span>
-                    </span>
-                    <button @click="showLeadDetails(lead)" class="btn-secondary action-btn">
-                      <span class="material-icons">assignment</span>
-                    </button>
-                    <button @click="markAsUnsuitable(lead)" class="btn-secondary action-btn unsuitable-btn">
-                      <span class="material-icons">block</span>
-                    </button>
+                  <div class="lead-card-title-row">
+                    <h3 class="lead-card-name">{{ lead.name }}</h3>
+                    <span class="category-badge">{{ lead.category }}</span>
                   </div>
                 </div>
-                
-                <div class="lead-details">
-                  <div class="detail-item" v-if="lead.address">
+                <div class="lead-card-body">
+                  <div class="lead-card-detail">
                     <span class="material-icons detail-icon">location_on</span>
                     <span class="detail-text">{{ lead.address }}</span>
                   </div>
-                  <div class="detail-item" v-if="lead.phone">
-                    <span class="material-icons detail-icon">phone</span>
-                    <span class="detail-text">{{ lead.phone }}</span>
-                  </div>
-                  <div class="detail-item" v-if="lead.website">
+                  <div class="lead-card-detail" v-if="lead.website">
                     <span class="material-icons detail-icon">language</span>
                     <a :href="lead.website" target="_blank" class="detail-link">{{ lead.website }}</a>
                   </div>
-                </div>
-                
-                <div class="lead-metrics">
-                  <!-- Lead Score -->
-                  <div class="metric lead-score-metric">
-                    <span class="metric-label">Lead Score</span>
-                    <div class="lead-score-display">
-                      <span class="lead-score-number">{{ lead.lead_score || 0 }}</span>
-                      <span class="lead-score-badge" :class="getUrgencyClass(lead.urgency_level)">
-                        {{ lead.urgency_level || 'Niedrig' }}
-                      </span>
-                    </div>
+                  <div class="lead-card-detail" v-if="lead.phone">
+                    <span class="material-icons detail-icon">phone</span>
+                    <span class="detail-text">{{ lead.phone }}</span>
                   </div>
-                  
-
+                </div>
+                <div class="lead-card-actions">
+                  <button
+                    v-if="!isLeadSaved(lead)"
+                    @click="saveLead(lead)"
+                    class="btn-primary action-btn"
+                    :disabled="savingLeadIds.includes(lead.place_id)"
+                    title="Lead speichern"
+                  >
+                    <span v-if="savingLeadIds.includes(lead.place_id)" class="material-icons loading-spinner">hourglass_empty</span>
+                    <span v-else class="material-icons">save</span>
+                    Speichern
+                  </button>
+                  <span v-else class="saved-check">
+                    <span class="material-icons">check</span>
+                  </span>
+                  <button @click="showLeadDetails(lead)" class="btn-secondary action-btn" title="Lead ansehen">
+                    <span class="material-icons">assignment</span>
+                    Ansehen
+                  </button>
+                  <a
+                    v-if="lead.google_maps_url"
+                    :href="lead.google_maps_url"
+                    class="btn-secondary action-btn"
+                    target="_blank"
+                    rel="noopener"
+                    title="Auf Google ansehen"
+                    style="text-decoration: none;"
+                  >
+                    <span class="material-icons">open_in_new</span>
+                    Auf Google ansehen
+                  </a>
+                  <button @click="markAsUnsuitable(lead)" class="btn-error action-btn" title="Lead löschen">
+                    <span class="material-icons">block</span>
+                    Löschen
+                  </button>
                 </div>
               </div>
             </div>
@@ -470,29 +472,27 @@ const startResearch = async () => {
   if (!searchKeyword.value.trim()) return
   isLoading.value = true
   try {
-    const response = await $fetch('/api/search', {
+    const response = await $fetch('/api/research/places', {
       method: 'POST',
       body: {
-        query: searchKeyword.value,
+        keyword: searchKeyword.value,
         location: location.value,
-        maxResults: maxResults.value
+        maxResults: maxResults.value,
+        enablePagination: maxResults.value > 20
       }
     })
     
     if (response.success) {
-      researchResults.value = response.results
-      
+      researchResults.value = response.data.places
       // Speichere Ergebnisse und Suchparameter in localStorage
-      saveToStorage(STORAGE_KEYS.RESEARCH_RESULTS, response.results)
+      saveToStorage(STORAGE_KEYS.RESEARCH_RESULTS, response.data.places)
       saveToStorage(STORAGE_KEYS.SEARCH_KEYWORD, searchKeyword.value)
       saveToStorage(STORAGE_KEYS.LOCATION, location.value)
       saveToStorage(STORAGE_KEYS.WEBSITE_QUALITY, websiteQuality.value)
       saveToStorage(STORAGE_KEYS.MIN_RATING, minRating.value)
       saveToStorage(STORAGE_KEYS.MAX_RESULTS, maxResults.value)
       saveToStorage(STORAGE_KEYS.SCORE_FILTER, scoreFilter.value)
-      
-      showFeedback(`${response.results.length} Leads gefunden!`, 'success')
-      
+      showFeedback(`${response.data.places.length} Leads gefunden!`, 'success')
       // Keyword-Vorschläge generieren
       generateKeywordSuggestions(searchKeyword.value)
     }
@@ -1016,253 +1016,176 @@ onMounted(() => {
   color: var(--color-gray-700);
 }
 
+/* Responsive Grid für Lead-Cards */
 .results-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: var(--spacing-6);
+  grid-template-columns: 100%;
+  gap: 30px;
+  justify-content: space-between;
+}
+@media (min-width: 700px) {
+  .results-grid {
+    grid-template-columns: repeat(2, 45%);
+    gap: 30px;
+  }
+}
+@media (min-width: 1100px) {
+  .results-grid {
+    grid-template-columns: repeat(3, 30%);
+    gap: 30px;
+  }
 }
 
+/* Modern Lead Card Styles */
 .lead-card {
   background: var(--color-white);
-  border: 1px solid var(--color-gray-200);
   border-radius: var(--radius-xl);
-  padding: var(--spacing-6);
-  transition: all 0.2s ease;
-}
-
-.lead-card:hover {
   box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
-}
-
-.lead-header {
+  padding: var(--spacing-6);
+  margin-bottom: var(--spacing-6);
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
   gap: var(--spacing-4);
-  margin-bottom: var(--spacing-4);
+  transition: box-shadow 0.2s;
 }
-
-.lead-avatar {
-  flex-shrink: 0;
+.lead-card:hover {
+  box-shadow: var(--shadow-lg);
 }
-
-.company-logo {
-  width: 48px;
-  height: 48px;
-  border-radius: var(--radius-lg);
-  object-fit: cover;
-}
-
-.avatar-fallback {
-  width: 48px;
-  height: 48px;
-  background: var(--color-primary-50);
-  border-radius: var(--radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  color: var(--color-primary-600);
-}
-
-.lead-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.lead-name {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  color: var(--color-gray-900);
-  margin: 0 0 var(--spacing-1) 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.lead-category {
-  font-size: var(--font-size-sm);
-  color: var(--color-gray-600);
-  margin: 0 0 var(--spacing-2) 0;
-}
-
-.lead-rating {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
-}
-
-.stars {
-  color: var(--color-warning);
-  font-size: var(--font-size-sm);
-}
-
-.rating-text {
-  font-size: var(--font-size-xs);
-  color: var(--color-gray-500);
-}
-
-.lead-actions {
-  display: flex;
-  gap: var(--spacing-2);
-}
-
-.action-btn {
-  padding: var(--spacing-2);
-  min-width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.unsuitable-btn {
-  background: #fef2f2;
-  color: #dc2626;
-  border-color: #fecaca;
-}
-
-.unsuitable-btn:hover {
-  background: #fee2e2;
-  border-color: #fca5a5;
-}
-
-.saved-check {
-  color: var(--color-success);
-  font-size: var(--font-size-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-}
-
-.lead-details {
-  margin-bottom: var(--spacing-4);
-}
-
-.detail-item {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
-  margin-bottom: var(--spacing-2);
-  font-size: var(--font-size-sm);
-}
-
-.detail-icon {
-  width: 16px;
-  text-align: center;
-  flex-shrink: 0;
-}
-
-.detail-text {
-  color: var(--color-gray-600);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.detail-link {
-  color: var(--color-primary-600);
-  text-decoration: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.detail-link:hover {
-  text-decoration: underline;
-}
-
-.lead-metrics {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-3);
-}
-
-.metric {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-1);
-}
-
-.metric-label {
-  font-size: var(--font-size-xs);
-  color: var(--color-gray-600);
-  font-weight: 500;
-}
-
-.lead-score-metric {
+.lead-card-header {
   display: flex;
   flex-direction: row;
+  align-items: flex-start;
   justify-content: space-between;
-  align-items: center;
+  gap: var(--spacing-2);
 }
-
-.lead-score-display {
+.lead-card-title-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+}
+.lead-card-name {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-gray-900);
+  margin: 0;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.category-badge {
+  margin: 0;
+  position: static;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+  font-size: 0.8em;
+  padding: 2px 10px;
+  border-radius: 8px;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.lead-card-rating-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  max-width: 100%;
+  overflow: hidden;
+}
+.stars, .rating-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.lead-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-2);
+}
+.lead-card-detail {
   display: flex;
   align-items: center;
   gap: var(--spacing-2);
-}
-
-.lead-score-number {
-  font-size: var(--font-size-lg);
-  font-weight: 700;
-  color: var(--color-gray-900);
-}
-
-.lead-score-badge {
-  padding: var(--spacing-1) var(--spacing-2);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-}
-
-.lead-score-badge.high {
-  background: var(--color-success);
-  color: var(--color-white);
-}
-
-.lead-score-badge.medium {
-  background: var(--color-warning);
-  color: var(--color-white);
-}
-
-.lead-score-badge.low {
-  background: var(--color-gray-300);
-  color: var(--color-gray-700);
-}
-
-.metric-bar {
-  height: 6px;
-  background: var(--color-gray-200);
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-}
-
-.metric-fill {
-  height: 100%;
-  border-radius: var(--radius-sm);
-  transition: width 0.3s ease;
-}
-
-.metric-fill.high {
-  background: var(--color-success);
-}
-
-.metric-fill.medium {
-  background: var(--color-warning);
-}
-
-.metric-fill.low {
-  background: var(--color-error);
-}
-
-.metric-value {
-  font-size: var(--font-size-xs);
   color: var(--color-gray-600);
-  font-weight: 500;
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lead-card-detail .material-icons {
+  font-size: var(--font-size-base);
+  color: var(--color-primary-500);
+}
+.lead-card-score-badge {
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-1) var(--spacing-3);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  display: inline-block;
+  margin-top: var(--spacing-2);
+}
+.lead-card-actions {
+  display: flex;
+  flex-direction: row;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-2);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.action-btn {
+  width: 100%;
+  max-width: 180px;
+  min-width: 120px;
+  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.action-btn .material-icons {
+  font-size: var(--font-size-lg);
+}
+.btn-primary.action-btn {
+  background: var(--color-primary-600);
+  color: var(--color-white);
+}
+.btn-primary.action-btn:hover {
+  background: var(--color-primary-700);
+  box-shadow: var(--shadow-md);
+}
+.btn-secondary.action-btn {
+  background: var(--color-gray-100);
+  color: var(--color-primary-700);
+}
+.btn-secondary.action-btn:hover {
+  background: var(--color-primary-100);
+  color: var(--color-primary-900);
+  box-shadow: var(--shadow-md);
+}
+.btn-error.action-btn {
+  background: var(--color-error);
+  color: var(--color-white);
+}
+.btn-error.action-btn:hover {
+  background: #b91c1c;
+  box-shadow: var(--shadow-md);
+}
+
+.lead-card-actions .btn-primary,
+.lead-card-actions .btn-secondary,
+.lead-card-actions .btn-error {
+  flex: 1;
+  justify-content: center;
 }
 
 /* Modal */
@@ -1424,28 +1347,353 @@ onMounted(() => {
     padding: var(--spacing-4);
   }
   
-  .lead-header {
+  .lead-card-header {
     flex-direction: column;
     align-items: flex-start;
   }
   
-  .lead-actions {
+  .lead-main-info {
     width: 100%;
-    justify-content: stretch;
   }
-  
-  .lead-actions .btn-primary,
-  .lead-actions .btn-secondary {
-    flex: 1;
-  }
-  
-  .quick-actions {
+
+  .lead-title-row {
     flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-1);
+  }
+
+  .lead-name {
+    width: 100%;
+    text-align: center;
+  }
+
+  .category-badge {
+    align-self: center;
+  }
+
+  .lead-rating-row {
+    justify-content: center;
+  }
+
+  .lead-card-body {
+    margin-bottom: var(--spacing-4);
+  }
+
+  .lead-detail-row {
+    flex-direction: column;
+    gap: var(--spacing-2);
+  }
+
+  .detail-item {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--spacing-2);
+  }
+
+  .detail-icon {
+    width: 16px;
+    text-align: center;
+  }
+
+  .detail-text {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .detail-link {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .lead-score-row {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .lead-score-metric {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .lead-score-display {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-1);
+  }
+
+  .lead-score-number {
+    font-size: var(--font-size-base);
+  }
+
+  .lead-score-badge {
+    font-size: var(--font-size-xs);
+  }
+
+  .lead-card-actions {
+    flex-direction: column;
+    gap: var(--spacing-2);
+  }
+
+  .lead-card-actions .btn-primary,
+  .lead-card-actions .btn-secondary,
+  .lead-card-actions .btn-error {
+    flex: 1;
+    justify-content: center;
   }
   
   .modal {
     margin: var(--spacing-4);
     max-height: calc(100vh - 2rem);
+  }
+}
+
+/* Lead Card Button & Title Optimierung */
+.lead-card {
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.lead-card-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--color-gray-900);
+  margin: 0;
+  max-width: 100%;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.2;
+}
+.lead-card-actions {
+  display: flex;
+  flex-direction: row;
+  gap: var(--spacing-3);
+  margin-top: var(--spacing-2);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.action-btn {
+  width: 100%;
+  max-width: 180px;
+  min-width: 120px;
+  justify-content: center;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 768px) {
+  .lead-card-actions {
+    flex-direction: column;
+    gap: var(--spacing-2);
+  }
+  .action-btn {
+    max-width: 100%;
+  }
+}
+
+/* Designer-Card-Layout für Lead-Cards */
+.lead-card {
+  position: relative;
+  width: 100%;
+  padding: 24px;
+  border-radius: 18px;
+  box-shadow: 0 4px 16px 0 rgb(0 0 0 / 0.07);
+  border: 1px solid #e5e7eb;
+  background: #fff;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.lead-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 6px;
+}
+.lead-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #e0e7ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5em;
+  color: #3730a3;
+  flex-shrink: 0;
+}
+.lead-card-title-wrap {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+}
+.lead-card-name {
+  font-size: 1.15em;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+  max-width: 100%;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+  line-height: 1.2;
+}
+.category-badge {
+  position: absolute;
+  right: 0;
+  top: 0;
+  font-size: 0.7em;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: #e0e7ff;
+  color: #3730a3;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.lead-card-rating {
+  margin-top: 2px;
+  font-size: 1em;
+  color: #f59e0b;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lead-card-details {
+  margin-top: 10px;
+  font-size: 0.95em;
+  color: #6b7280;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.lead-card-detail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lead-card-detail .material-icons {
+  font-size: 1em;
+  color: #2563eb;
+}
+.lead-card-score-chip {
+  position: absolute;
+  right: 24px;
+  bottom: 80px;
+  font-size: 0.85em;
+  background: #f3f4f6;
+  color: #2563eb;
+  border-radius: 8px;
+  padding: 2px 10px;
+  font-weight: 600;
+}
+.lead-card-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 18px;
+}
+.action-btn {
+  flex: 1;
+  min-width: 0;
+  max-width: 140px;
+  height: 44px;
+  font-size: 1em;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: 30px;
+  justify-items: stretch;
+}
+@media (min-width: 700px) {
+  .results-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (min-width: 1100px) {
+  .results-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 700px) {
+  .lead-card {
+    width: 100%;
+    padding: 14px;
+  }
+  .lead-card-actions {
+    flex-direction: column;
+    gap: 10px;
+  }
+  .action-btn {
+    max-width: 100%;
+  }
+}
+
+/* Custom Dropdown Styles */
+.select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.filter-select {
+  width: 100%;
+  padding: 10px 38px 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: #fff;
+  font-size: 1em;
+  color: #1e293b;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  outline: none;
+  transition: border 0.2s, box-shadow 0.2s;
+  box-shadow: none;
+}
+.filter-select:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 2px #2563eb22;
+}
+.filter-select:hover {
+  border-color: #a5b4fc;
+}
+.select-arrow {
+  position: absolute;
+  right: 12px;
+  pointer-events: none;
+  color: #2563eb;
+  font-size: 1.4em;
+}
+@media (max-width: 700px) {
+  .filter-select {
+    font-size: 0.98em;
+    padding: 8px 36px 8px 10px;
+  }
+  .select-arrow {
+    font-size: 1.1em;
   }
 }
 </style> 
