@@ -38,6 +38,11 @@
             <span class="nav-text">Recherche</span>
           </NuxtLink>
           
+          <NuxtLink to="/lists" class="nav-item" active-class="active">
+            <span class="nav-icon material-icons">list</span>
+            <span class="nav-text">Listen</span>
+          </NuxtLink>
+          
           <NuxtLink to="/analytics" class="nav-item" active-class="active">
             <span class="nav-icon material-icons">bar_chart</span>
             <span class="nav-text">Analytics</span>
@@ -59,6 +64,10 @@
             <p class="breadcrumb">Verwalte deine Lead-Status und Follow-ups</p>
           </div>
           <div class="header-right">
+            <button @click="addNewLead" class="btn-primary">
+              <span class="material-icons">add</span>
+              Neuer Lead
+            </button>
             <button @click="exportPipeline" class="btn-secondary">
               <span class="material-icons">download</span>
               Export
@@ -68,54 +77,64 @@
 
         <!-- Content Area -->
         <div class="content-area">
-          <!-- Pipeline Stats -->
-          <section class="pipeline-stats">
-            <div class="stats-grid">
-              <div class="stat-card">
+
+          
+          <!-- Pipeline Overview -->
+          <section class="pipeline-overview-section">
+            <div class="overview-header">
+              <h3>Pipeline Übersicht</h3>
+              <button @click="addNewLead" class="btn-primary">
+                <span class="material-icons">add</span>
+                Lead hinzufügen
+              </button>
+            </div>
+            
+            <div class="overview-stats">
+              <div class="stat-item">
                 <div class="stat-icon">
                   <span class="material-icons">fiber_new</span>
                 </div>
-                <div class="stat-info">
+                <div class="stat-content">
                   <div class="stat-number">{{ pipelineStats.new || 0 }}</div>
                   <div class="stat-label">Neu</div>
                 </div>
               </div>
-
-              <div class="stat-card">
+              
+              <div class="stat-item">
                 <div class="stat-icon">
                   <span class="material-icons">phone</span>
                 </div>
-                <div class="stat-info">
+                <div class="stat-content">
                   <div class="stat-number">{{ pipelineStats.contacted || 0 }}</div>
                   <div class="stat-label">Kontaktiert</div>
                 </div>
               </div>
-
-              <div class="stat-card">
+              
+              <div class="stat-item">
                 <div class="stat-icon">
                   <span class="material-icons">chat</span>
                 </div>
-                <div class="stat-info">
+                <div class="stat-content">
                   <div class="stat-number">{{ pipelineStats.qualified || 0 }}</div>
                   <div class="stat-label">Qualifiziert</div>
                 </div>
               </div>
-
-              <div class="stat-card">
+              
+              <div class="stat-item">
                 <div class="stat-icon">
                   <span class="material-icons">euro</span>
                 </div>
-                <div class="stat-info">
+                <div class="stat-content">
                   <div class="stat-number">{{ pipelineStats.proposal || 0 }}</div>
                   <div class="stat-label">Angebot</div>
                 </div>
               </div>
-
-              <div class="stat-card">
+              
+              <div class="stat-item">
                 <div class="stat-icon">
                   <span class="material-icons">check_circle</span>
                 </div>
-                <div class="stat-info">
+                <div class="stat-content">
                   <div class="stat-number">{{ pipelineStats.closed || 0 }}</div>
                   <div class="stat-label">Geschlossen</div>
                 </div>
@@ -125,16 +144,6 @@
 
           <!-- Pipeline Board -->
           <section class="pipeline-board">
-            <div class="board-header">
-              <h3>Pipeline Übersicht</h3>
-              <div class="board-controls">
-                <button @click="addNewLead" class="btn-primary">
-                  <span class="material-icons">add</span>
-                  Lead hinzufügen
-                </button>
-              </div>
-            </div>
-
             <div class="board-columns">
               <!-- New Column -->
               <div class="board-column">
@@ -160,7 +169,7 @@
                       </div>
                       <div class="lead-info">
                         <h5 class="lead-name">{{ lead.name }}</h5>
-                        <p class="lead-company">{{ lead.company || 'Unbekannt' }}</p>
+                        <p class="lead-company">{{ lead.industry || 'Unbekannt' }}</p>
                         <div class="lead-score">
                           <span class="score-badge">{{ lead.score || 0 }}/100</span>
                         </div>
@@ -179,6 +188,9 @@
                     <div class="lead-actions">
                       <button @click.stop="moveLead(lead, 'Kontaktiert')" class="btn-primary btn-sm">
                         Kontaktieren
+                      </button>
+                      <button @click.stop="markAsUnsuitable(lead)" class="btn-secondary btn-sm">
+                        Ungeeignet
                       </button>
                     </div>
                   </div>
@@ -209,7 +221,7 @@
                       </div>
                       <div class="lead-info">
                         <h5 class="lead-name">{{ lead.name }}</h5>
-                        <p class="lead-company">{{ lead.company || 'Unbekannt' }}</p>
+                        <p class="lead-company">{{ lead.industry || 'Unbekannt' }}</p>
                         <div class="lead-score">
                           <span class="score-badge">{{ lead.score || 0 }}/100</span>
                         </div>
@@ -228,6 +240,9 @@
                     <div class="lead-actions">
                       <button @click.stop="moveLead(lead, 'Qualifiziert')" class="btn-primary btn-sm">
                         Qualifizieren
+                      </button>
+                      <button @click.stop="markAsUnsuitable(lead)" class="btn-secondary btn-sm">
+                        Ungeeignet
                       </button>
                     </div>
                   </div>
@@ -258,7 +273,7 @@
                       </div>
                       <div class="lead-info">
                         <h5 class="lead-name">{{ lead.name }}</h5>
-                        <p class="lead-company">{{ lead.company || 'Unbekannt' }}</p>
+                        <p class="lead-company">{{ lead.industry || 'Unbekannt' }}</p>
                         <div class="lead-score">
                           <span class="score-badge">{{ lead.score || 0 }}/100</span>
                         </div>
@@ -277,6 +292,9 @@
                     <div class="lead-actions">
                       <button @click.stop="moveLead(lead, 'Angebot')" class="btn-primary btn-sm">
                         Angebot
+                      </button>
+                      <button @click.stop="markAsUnsuitable(lead)" class="btn-secondary btn-sm">
+                        Ungeeignet
                       </button>
                     </div>
                   </div>
@@ -307,7 +325,7 @@
                       </div>
                       <div class="lead-info">
                         <h5 class="lead-name">{{ lead.name }}</h5>
-                        <p class="lead-company">{{ lead.company || 'Unbekannt' }}</p>
+                        <p class="lead-company">{{ lead.industry || 'Unbekannt' }}</p>
                         <div class="lead-score">
                           <span class="score-badge">{{ lead.score || 0 }}/100</span>
                         </div>
@@ -326,6 +344,9 @@
                     <div class="lead-actions">
                       <button @click.stop="moveLead(lead, 'Geschlossen')" class="btn-success btn-sm">
                         Gewonnen
+                      </button>
+                      <button @click.stop="markAsUnsuitable(lead)" class="btn-secondary btn-sm">
+                        Ungeeignet
                       </button>
                     </div>
                   </div>
@@ -356,7 +377,7 @@
                       </div>
                       <div class="lead-info">
                         <h5 class="lead-name">{{ lead.name }}</h5>
-                        <p class="lead-company">{{ lead.company || 'Unbekannt' }}</p>
+                        <p class="lead-company">{{ lead.industry || 'Unbekannt' }}</p>
                         <div class="lead-score">
                           <span class="score-badge">{{ lead.score || 0 }}/100</span>
                         </div>
@@ -376,6 +397,9 @@
                       <button @click.stop="archiveLead(lead)" class="btn-secondary btn-sm">
                         Archivieren
                       </button>
+                      <button @click.stop="markAsUnsuitable(lead)" class="btn-secondary btn-sm">
+                        Ungeeignet
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -385,6 +409,14 @@
         </div>
       </main>
     </div>
+    
+    <!-- Lead Edit Modal -->
+    <LeadEditModal 
+      :show="showEditModal" 
+      :lead="selectedLead" 
+      @close="closeEditModal"
+      @saved="onLeadSaved"
+    />
   </div>
 </template>
 
@@ -396,6 +428,8 @@ const leads = ref([])
 const isLoading = ref(false)
 const feedbackMessage = ref('')
 const feedbackType = ref('success')
+const showEditModal = ref(false)
+const selectedLead = ref(null)
 
 const pipelineStats = computed(() => {
   const stats = {
@@ -486,13 +520,23 @@ const moveLead = async (lead, newStatus) => {
 }
 
 const editLead = (lead) => {
-  // Implementierung für Lead-Bearbeitung
-  showFeedback('Lead-Bearbeitung wird implementiert...', 'success')
+  selectedLead.value = lead
+  showEditModal.value = true
+}
+
+const closeEditModal = () => {
+  showEditModal.value = false
+  selectedLead.value = null
+}
+
+const onLeadSaved = async (savedLead) => {
+  showFeedback('Lead erfolgreich gespeichert!', 'success')
+  await loadLeads() // Liste neu laden
 }
 
 const addNewLead = () => {
-  // Implementierung für neuen Lead
-  showFeedback('Neue Lead-Funktion wird implementiert...', 'success')
+  selectedLead.value = null // Null = neuer Lead
+  showEditModal.value = true
 }
 
 const archiveLead = async (lead) => {
@@ -541,7 +585,7 @@ const generateCSV = (leads) => {
       `"${lead.name || ''}"`,
       `"${lead.email || ''}"`,
       `"${lead.phone || ''}"`,
-      `"${lead.company || ''}"`,
+      `"${lead.industry || ''}"`,
       `"${lead.status || ''}"`,
       `"${lead.score || 0}"`,
       `"${lead.notes || ''}"`
@@ -549,6 +593,25 @@ const generateCSV = (leads) => {
   ].join('\n')
   
   return csvContent
+}
+
+const markAsUnsuitable = async (lead) => {
+  if (!confirm('Lead als ungeeignet markieren?')) return
+  
+  isLoading.value = true
+  try {
+    const response = await $fetch(`/api/leads/${lead.id}/mark-unsuitable`, {
+      method: 'POST'
+    })
+    if (response.success) {
+      showFeedback('Lead als ungeeignet markiert!', 'success')
+      await loadLeads()
+    }
+  } catch (error) {
+    showFeedback('Fehler beim Markieren als ungeeignet!', 'error')
+  } finally {
+    isLoading.value = false
+  }
 }
 
 onMounted(() => {
@@ -561,9 +624,88 @@ onMounted(() => {
   padding: var(--spacing-8);
 }
 
-/* Pipeline Stats */
-.pipeline-stats {
+
+
+/* Pipeline Overview Section */
+.pipeline-overview-section {
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-200);
+  border-radius: var(--radius-xl);
   margin-bottom: var(--spacing-8);
+  overflow: hidden;
+}
+
+.overview-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-6);
+  border-bottom: 1px solid var(--color-gray-200);
+  background: var(--color-gray-50);
+}
+
+.overview-header h3 {
+  margin: 0;
+  color: var(--color-gray-900);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.overview-stats {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 0;
+}
+
+.stat-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-4);
+  padding: var(--spacing-6);
+  border-right: 1px solid var(--color-gray-200);
+  transition: background-color 0.2s ease;
+}
+
+.stat-item:hover {
+  background: var(--color-gray-50);
+}
+
+.stat-item:last-child {
+  border-right: none;
+}
+
+.stat-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  background: var(--color-primary-50);
+  border-radius: var(--radius-lg);
+  flex-shrink: 0;
+}
+
+.stat-icon .material-icons {
+  font-size: 24px;
+  color: var(--color-primary-600);
+}
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-number {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--color-gray-900);
+  line-height: 1;
+  margin-bottom: var(--spacing-1);
+}
+
+.stat-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-600);
+  font-weight: 500;
 }
 
 /* Pipeline Board */
@@ -572,24 +714,6 @@ onMounted(() => {
   border: 1px solid var(--color-gray-200);
   border-radius: var(--radius-xl);
   overflow: hidden;
-}
-
-.board-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: var(--spacing-6);
-  border-bottom: 1px solid var(--color-gray-200);
-}
-
-.board-header h3 {
-  margin: 0;
-  color: var(--color-gray-900);
-}
-
-.board-controls {
-  display: flex;
-  gap: var(--spacing-3);
 }
 
 .board-columns {
@@ -761,6 +885,10 @@ onMounted(() => {
 
 /* Responsive Design */
 @media (max-width: 1200px) {
+  .overview-stats {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
   .board-columns {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -769,6 +897,25 @@ onMounted(() => {
 @media (max-width: 768px) {
   .content-area {
     padding: var(--spacing-4);
+  }
+  
+  .overview-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-4);
+  }
+  
+  .overview-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .stat-item {
+    border-right: none;
+    border-bottom: 1px solid var(--color-gray-200);
+  }
+  
+  .stat-item:nth-child(even) {
+    border-left: 1px solid var(--color-gray-200);
   }
   
   .board-columns {
@@ -783,20 +930,6 @@ onMounted(() => {
   
   .board-column:last-child {
     border-bottom: none;
-  }
-  
-  .board-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spacing-4);
-  }
-  
-  .board-controls {
-    width: 100%;
-  }
-  
-  .board-controls .btn-primary {
-    width: 100%;
   }
 }
 </style> 

@@ -6,22 +6,17 @@ export default defineNuxtConfig({
   runtimeConfig: {
     googleApiKey: process.env.GOOGLE_API_KEY || 'AIzaSyB6QzeBAKmSSADx4rZ7mg1h0osi6bqzXGw',
     public: {
-      // Supabase Konfiguration
-      supabaseHost: process.env.SUPABASEHOST,
-      supabasePort: process.env.SUPABASEPORT,
-      supabaseDatabase: process.env.SUPABASEDATABASE,
-      supabaseUser: process.env.SUPABASEUSER,
-      supabasePoolMode: process.env.SUPABASEPOOLMODE,
-      // Client-Side Keys (öffentlich)
-      supabaseKey: process.env.SUPABASE_API_PUB || process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY
+      // Supabase Konfiguration für Direct Connection
+      supabaseUrl: process.env.SUPABASE_URL || process.env.SUPABASE_PROJECT_URL,
+      supabaseKey: process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_API_KEY
     },
     // Server-side nur (nicht öffentlich)
-    supabaseSecret: process.env.SUPABASE_API_SECRET || process.env.SUPABASE_SECRET
+    supabaseSecret: process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET
   },
   supabase: {
     redirect: false,
-    url: process.env.SUPABASEHOST ? `https://${process.env.SUPABASEHOST.replace('.pooler.supabase.com', '.supabase.co')}` : undefined,
-    key: process.env.SUPABASE_API_PUB || process.env.SUPABASE_KEY || process.env.SUPABASE_ANON_KEY
+    url: process.env.SUPABASE_URL || process.env.SUPABASE_PROJECT_URL,
+    key: process.env.SUPABASE_ANON_KEY || process.env.SUPABASE_API_KEY
   },
   app: {
     head: {

@@ -38,6 +38,11 @@
             <span class="nav-text">Recherche</span>
           </NuxtLink>
           
+          <NuxtLink to="/lists" class="nav-item" active-class="active">
+            <span class="nav-icon material-icons">list</span>
+            <span class="nav-text">Listen</span>
+          </NuxtLink>
+          
           <NuxtLink to="/analytics" class="nav-item" active-class="active">
             <span class="nav-icon material-icons">bar_chart</span>
             <span class="nav-text">Analytics</span>
@@ -59,6 +64,10 @@
             <p class="breadcrumb">Lead-Verwaltung und Kontaktdaten</p>
           </div>
           <div class="header-right">
+            <button @click="addNewLead" class="btn-primary">
+              <span class="material-icons">add</span>
+              Neuer Lead
+            </button>
             <button @click="exportLeads" class="btn-secondary">
               <span class="material-icons">download</span>
               CSV Export
@@ -68,9 +77,67 @@
 
         <!-- Content Area -->
         <div class="content-area">
+          <!-- Header Actions -->
+          <div class="header-actions">
+            <div class="search-box">
+              <span class="material-icons">search</span>
+              <input 
+                v-model="searchQuery" 
+                type="text" 
+                placeholder="Leads durchsuchen..."
+                @input="filterLeads"
+                @keyup="filterLeads"
+              />
+            </div>
+            
+            <!-- Listen Filter -->
+            <div class="list-filter">
+              <label class="filter-label">Liste filtern:</label>
+              <div class="select-wrapper">
+                <select v-model="selectedListFilter" @change="filterByList" class="list-select">
+                  <option value="">Alle Listen</option>
+                  <option v-for="list in lists" :key="list.id" :value="list.id">
+                    {{ list.name }} ({{ list.lead_count || 0 }})
+                  </option>
+                </select>
+                <span class="select-arrow material-icons">expand_more</span>
+              </div>
+            </div>
+            
+            <button @click="addNewLead" class="btn-primary">
+              <span class="material-icons">add</span>
+              Neuer Lead
+            </button>
+          </div>
+          
+          <!-- Bulk Actions -->
+          <div v-if="selectedLeads.length > 0" class="bulk-actions">
+            <div class="bulk-info">
+              <span class="material-icons">check_circle</span>
+              {{ selectedLeads.length }} Lead{{ selectedLeads.length !== 1 ? 's' : '' }} ausgewählt
+            </div>
+            <div class="bulk-buttons">
+              <ListSelector 
+                :lead-ids="selectedLeads" 
+                @lists-updated="handleListsUpdated"
+              />
+              <button @click="clearSelection" class="btn-secondary">
+                <span class="material-icons">clear</span>
+                Auswahl aufheben
+              </button>
+            </div>
+          </div>
+          
           <!-- Leads Grid -->
           <div class="leads-grid">
-            <div v-for="lead in leads" :key="lead.id" class="lead-card">
+            <div v-for="lead in filteredLeads" :key="lead.id" class="lead-card" :class="{ selected: selectedLeads.includes(lead.id) }">
+              <div class="lead-checkbox">
+                <input 
+                  type="checkbox" 
+                  :checked="selectedLeads.includes(lead.id)"
+                  @change="toggleLeadSelection(lead.id)"
+                />
+              </div>
               <div class="lead-header">
                 <div class="lead-avatar">
                   <div class="avatar-fallback">
@@ -102,6 +169,14 @@
                   <span class="material-icons detail-icon">business</span>
                   <span class="detail-text">{{ lead.business_category }}</span>
                 </div>
+                
+                <!-- Listen Tags -->
+                <div v-if="lead.lists && lead.lists.length > 0" class="lead-lists">
+                  <div v-for="list in lead.lists" :key="list.id" class="list-tag" :style="{ backgroundColor: list.color }">
+                    <span class="material-icons list-icon">{{ list.icon }}</span>
+                    <span class="list-name">{{ list.name }}</span>
+                  </div>
+                </div>
               </div>
               
               <div class="lead-actions">
@@ -126,6 +201,14 @@
         </div>
       </main>
     </div>
+    
+    <!-- Lead Edit Modal -->
+    <LeadEditModal 
+      :show="showEditModal" 
+      :lead="selectedLead" 
+      @close="closeEditModal"
+      @saved="onLeadSaved"
+    />
   </div>
 </template>
 
@@ -134,9 +217,19 @@ import { ref, onMounted } from 'vue'
 import { $fetch } from 'ofetch'
 
 const leads = ref([])
+const filteredLeads = ref([])
+const lists = ref([])
+const selectedLeads = ref([])
+const searchQuery = ref('')
+const selectedListFilter = ref('')
 const isLoading = ref(false)
 const feedbackMessage = ref('')
 const feedbackType = ref('success')
+const showEditModal = ref(false)
+const selectedLead = ref(null)
+
+// URL-Parameter für Listen-Filter
+const route = useRoute()
 
 function showFeedback(msg, type = 'success') {
   feedbackMessage.value = msg
@@ -159,6 +252,7 @@ const loadLeads = async () => {
     const response = await $fetch('/api/leads')
     if (response.success) {
       leads.value = response.data
+      filteredLeads.value = response.data
       showFeedback(`${leads.value.length} Leads geladen!`, 'success')
     }
   } catch (error) {
@@ -169,9 +263,87 @@ const loadLeads = async () => {
   }
 }
 
+const loadLists = async () => {
+  try {
+    const response = await $fetch('/api/lists/stats')
+    if (response.success) {
+      lists.value = response.data
+    }
+  } catch (error) {
+    console.error('Fehler beim Laden der Listen:', error)
+  }
+}
+
+const filterLeads = () => {
+  let filtered = leads.value
+  
+  // Text-Suche
+  if (searchQuery.value) {
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(lead => 
+      lead.name?.toLowerCase().includes(query) ||
+      lead.email?.toLowerCase().includes(query) ||
+      lead.industry?.toLowerCase().includes(query) ||
+      lead.business_category?.toLowerCase().includes(query)
+    )
+  }
+  
+  // Listen-Filter
+  if (selectedListFilter.value) {
+    filtered = filtered.filter(lead => 
+      lead.lists?.some(list => list.id === selectedListFilter.value)
+    )
+  }
+  
+  filteredLeads.value = filtered
+}
+
+const filterByList = () => {
+  filterLeads()
+}
+
+const toggleLeadSelection = (leadId) => {
+  const index = selectedLeads.value.indexOf(leadId)
+  if (index > -1) {
+    selectedLeads.value.splice(index, 1)
+  } else {
+    selectedLeads.value.push(leadId)
+  }
+}
+
+const clearSelection = () => {
+  selectedLeads.value = []
+}
+
+const handleListsUpdated = async () => {
+  showFeedback('Leads erfolgreich zu Listen hinzugefügt!', 'success')
+  await loadLeads() // Leads neu laden um Listen-Info zu aktualisieren
+  clearSelection()
+}
+
+const handleListAdded = async () => {
+  showFeedback('Lead erfolgreich zur Liste hinzugefügt!', 'success')
+  await loadLeads() // Leads neu laden um Listen-Info zu aktualisieren
+}
+
 const editLead = (lead) => {
-  // Implementierung für Lead-Bearbeitung
-  showFeedback('Lead-Bearbeitung wird implementiert...', 'success')
+  selectedLead.value = lead
+  showEditModal.value = true
+}
+
+const closeEditModal = () => {
+  showEditModal.value = false
+  selectedLead.value = null
+}
+
+const onLeadSaved = async (savedLead) => {
+  showFeedback('Lead erfolgreich gespeichert!', 'success')
+  await loadLeads() // Liste neu laden
+}
+
+const addNewLead = () => {
+  selectedLead.value = null // Null = neuer Lead
+  showEditModal.value = true
 }
 
 const deleteLead = async (id) => {
@@ -211,195 +383,163 @@ const exportLeads = async () => {
 
 onMounted(() => {
   loadLeads()
+  loadLists()
+  
+  // Prüfe URL-Parameter für Listen-Filter
+  if (route.query.list) {
+    selectedListFilter.value = route.query.list
+    filterByList()
+  }
 })
 </script>
 
 <style scoped>
-.feedback-message {
-  position: fixed;
-  top: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 12px 32px;
-  border-radius: 8px;
-  font-size: 16px;
-  font-weight: 600;
-  z-index: 2000;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  animation: fadeInOut 2s;
-}
-.feedback-message.success { background: #10b981; color: #fff; }
-.feedback-message.error { background: #ef4444; color: #fff; }
-
-@keyframes fadeInOut {
-  0% { opacity: 0; }
-  10% { opacity: 1; }
-  90% { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-.loading-overlay {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(255,255,255,0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 3000;
-  font-size: 1.2rem;
-  color: #2563eb;
-}
-.loading-spinner {
-  font-size: 2.5rem;
-  margin-right: 1rem;
-  animation: spin 1s linear infinite;
-}
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.dashboard-layout {
-  display: flex;
-  min-height: 100vh;
-  background: #f8fafc;
-}
-
-.sidebar {
-  width: 280px;
-  background: #1e293b;
-  color: white;
-  padding: 24px;
-  position: fixed;
-  height: 100vh;
-  overflow-y: auto;
-}
-
-.sidebar-header {
-  margin-bottom: 32px;
-}
-
-.logo {
-  font-size: 24px;
-  font-weight: 700;
-  margin: 0 0 8px 0;
-  color: #3b82f6;
-}
-
-.tagline {
-  font-size: 14px;
-  color: #94a3b8;
-  margin: 0;
-}
-
-.sidebar-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 8px;
-  color: #cbd5e1;
-  text-decoration: none;
-  transition: all 0.2s;
-}
-
-.nav-item:hover {
-  background: #334155;
-  color: white;
-}
-
-.nav-item.active {
-  background: #3b82f6;
-  color: white;
-}
-
-.nav-icon {
-  font-size: 20px;
-}
-
-.main-content {
-  flex: 1;
-  margin-left: 280px;
-  padding: 24px;
-}
-
-.top-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 32px;
-  padding: 24px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.header-left h2 {
-  margin: 0 0 4px 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.breadcrumb {
-  margin: 0;
-  color: #64748b;
-  font-size: 14px;
-}
-
-.header-right {
-  display: flex;
-  gap: 12px;
-}
-
-.btn-primary, .btn-secondary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.btn-primary {
-  background: #3b82f6;
-  color: white;
-}
-
-.btn-primary:hover {
-  background: #2563eb;
-}
-
-.btn-secondary {
-  background: #f1f5f9;
-  color: #475569;
-}
-
-.btn-secondary:hover {
-  background: #e2e8f0;
-}
-
 .content-area {
   padding: var(--spacing-8);
 }
 
-.leads-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-  gap: var(--spacing-6);
+/* Header Actions */
+.header-actions {
+  display: flex;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-6);
+  align-items: center;
+  flex-wrap: wrap;
 }
 
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  background: var(--color-white);
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-2) var(--spacing-3);
+  flex: 1;
+  max-width: 300px;
+}
+
+.search-box input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--font-size-sm);
+  color: var(--color-gray-900);
+  width: 100%;
+}
+
+.search-box .material-icons {
+  color: var(--color-gray-500);
+  font-size: var(--font-size-lg);
+}
+
+.list-filter {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  min-width: 280px;
+  background: var(--color-white);
+  padding: var(--spacing-2) var(--spacing-3);
+  border: 1px solid var(--color-gray-300);
+  border-radius: var(--radius-lg);
+  transition: all 0.2s ease;
+}
+
+.list-filter:hover {
+  border-color: var(--color-primary-300);
+  box-shadow: var(--shadow-sm);
+}
+
+.list-filter:focus-within {
+  border-color: var(--color-primary-500);
+  box-shadow: 0 0 0 3px var(--color-primary-100);
+}
+
+.filter-label {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-gray-700);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.select-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.list-select {
+  width: 100%;
+  padding: var(--spacing-2) var(--spacing-3);
+  padding-right: var(--spacing-8);
+  border: none;
+  background: transparent;
+  color: var(--color-gray-900);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  outline: none;
+  font-weight: 500;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+}
+
+.select-arrow {
+  position: absolute;
+  right: var(--spacing-2);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--color-gray-500);
+  font-size: var(--font-size-lg);
+  pointer-events: none;
+  transition: all 0.2s ease;
+}
+
+.list-filter:focus-within .select-arrow {
+  color: var(--color-primary-600);
+  transform: translateY(-50%) rotate(180deg);
+}
+
+.list-select option {
+  padding: var(--spacing-2);
+  font-weight: 500;
+  background: var(--color-white);
+  color: var(--color-gray-900);
+}
+
+/* Bulk Actions */
+.bulk-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-4);
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-200);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--spacing-6);
+}
+
+.bulk-info {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  color: var(--color-primary-700);
+  font-weight: 600;
+}
+
+.bulk-info .material-icons {
+  color: var(--color-primary-600);
+}
+
+.bulk-buttons {
+  display: flex;
+  gap: var(--spacing-3);
+  align-items: center;
+}
+
+/* Lead Cards */
 .lead-card {
+  position: relative;
   background: var(--color-white);
   border: 1px solid var(--color-gray-200);
   border-radius: var(--radius-xl);
@@ -408,155 +548,67 @@ onMounted(() => {
 }
 
 .lead-card:hover {
+  border-color: var(--color-primary-300);
   box-shadow: var(--shadow-md);
   transform: translateY(-2px);
 }
 
-.lead-header {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-4);
-  margin-bottom: var(--spacing-4);
-}
-
-.lead-avatar {
-  flex-shrink: 0;
-}
-
-.avatar-fallback {
-  width: 48px;
-  height: 48px;
+.lead-card.selected {
+  border-color: var(--color-primary-500);
   background: var(--color-primary-50);
-  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.lead-checkbox {
+  position: absolute;
+  top: var(--spacing-4);
+  right: var(--spacing-4);
+  z-index: 10;
+}
+
+.lead-checkbox input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  accent-color: var(--color-primary-600);
+}
+
+/* Lead Lists */
+.lead-lists {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-2);
+  margin-top: var(--spacing-3);
+  padding-top: var(--spacing-3);
+  border-top: 1px solid var(--color-gray-100);
+}
+
+.list-tag {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  color: var(--color-primary-600);
-}
-
-.lead-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.lead-name {
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  color: var(--color-gray-900);
-  margin: 0 0 var(--spacing-1) 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.lead-score {
-  display: flex;
-  align-items: center;
-}
-
-.score-badge {
-  background: var(--color-primary-50);
-  color: var(--color-primary-600);
+  gap: var(--spacing-1);
   padding: var(--spacing-1) var(--spacing-2);
   border-radius: var(--radius-md);
+  color: var(--color-white);
   font-size: var(--font-size-xs);
-  font-weight: 600;
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
-.lead-details {
-  margin-bottom: var(--spacing-4);
+.list-tag:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
-.detail-item {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
-  margin-bottom: var(--spacing-2);
-  font-size: var(--font-size-sm);
-}
-
-.detail-icon {
-  font-size: var(--font-size-sm);
-  width: 16px;
-  text-align: center;
-  flex-shrink: 0;
-  color: var(--color-gray-500);
-}
-
-.detail-text {
-  color: var(--color-gray-600);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.detail-link {
-  color: var(--color-primary-600);
-  text-decoration: none;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.detail-link:hover {
-  text-decoration: underline;
-}
-
-.lead-actions {
-  display: flex;
-  gap: var(--spacing-2);
-}
-
-.lead-actions .btn-primary,
-.lead-actions .btn-error {
-  flex: 1;
-  padding: var(--spacing-2) var(--spacing-3);
+.list-icon {
   font-size: var(--font-size-xs);
 }
 
-.empty-state {
-  text-align: center;
-  padding: var(--spacing-12);
-  background: var(--color-white);
-  border: 1px solid var(--color-gray-200);
-  border-radius: var(--radius-xl);
-  margin-top: var(--spacing-8);
+.list-name {
+  white-space: nowrap;
 }
 
-.empty-icon {
-  font-size: 4rem;
-  margin-bottom: var(--spacing-4);
-  color: var(--color-gray-400);
-}
-
-.empty-state h3 {
-  margin-bottom: var(--spacing-2);
-  color: var(--color-gray-900);
-}
-
-.empty-state p {
-  color: var(--color-gray-600);
-  margin-bottom: var(--spacing-6);
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .content-area {
-    padding: var(--spacing-4);
-  }
-  
-  .leads-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .lead-card {
-    padding: var(--spacing-4);
-  }
-  
-  .lead-actions {
-    flex-direction: column;
-  }
-}
-</style> 
+/* Existing styles... */
+</style>

@@ -38,6 +38,11 @@
             <span class="nav-text">Recherche</span>
           </NuxtLink>
           
+          <NuxtLink to="/lists" class="nav-item" active-class="active">
+            <span class="nav-icon material-icons">list</span>
+            <span class="nav-text">Listen</span>
+          </NuxtLink>
+          
           <NuxtLink to="/analytics" class="nav-item" active-class="active">
             <span class="nav-icon material-icons">bar_chart</span>
             <span class="nav-text">Analytics</span>
@@ -221,6 +226,9 @@
                     <button @click="showLeadDetails(lead)" class="btn-secondary action-btn">
                       <span class="material-icons">assignment</span>
                     </button>
+                    <button @click="markAsUnsuitable(lead)" class="btn-secondary action-btn unsuitable-btn">
+                      <span class="material-icons">block</span>
+                    </button>
                   </div>
                 </div>
                 
@@ -251,31 +259,7 @@
                     </div>
                   </div>
                   
-                  <!-- Website Quality -->
-                  <div class="metric" v-if="lead.website_quality_score">
-                    <span class="metric-label">Website Score</span>
-                    <div class="metric-bar">
-                      <div 
-                        class="metric-fill" 
-                        :class="getScoreClass(lead.website_quality_score)"
-                        :style="{ width: (lead.website_quality_score || 0) + '%' }"
-                      ></div>
-                    </div>
-                    <span class="metric-value">{{ lead.website_quality_score || 0 }}/100</span>
-                  </div>
-                  
-                  <!-- PageSpeed Score -->
-                  <div class="metric" v-if="lead.page_speed_score">
-                    <span class="metric-label">PageSpeed</span>
-                    <div class="metric-bar">
-                      <div 
-                        class="metric-fill" 
-                        :class="getScoreClass(lead.page_speed_score)"
-                        :style="{ width: (lead.page_speed_score || 0) + '%' }"
-                      ></div>
-                    </div>
-                    <span class="metric-value">{{ lead.page_speed_score || 0 }}/100</span>
-                  </div>
+
                 </div>
               </div>
             </div>
@@ -313,14 +297,7 @@
                       <span class="detail-label">Bewertung:</span>
                       <span class="detail-value">{{ selectedLead.rating }} ⭐ ({{ selectedLead.review_count || 0 }} Bewertungen)</span>
                     </div>
-                    <div class="detail-item" v-if="selectedLead.website_quality_score">
-                      <span class="detail-label">Website Score:</span>
-                      <span class="detail-value">{{ selectedLead.website_quality_score }}/100</span>
-                    </div>
-                    <div class="detail-item" v-if="selectedLead.page_speed_score">
-                      <span class="detail-label">PageSpeed Score:</span>
-                      <span class="detail-value">{{ selectedLead.page_speed_score }}/100</span>
-                    </div>
+
                     <div class="detail-item">
                       <span class="detail-label">Lead Score:</span>
                       <span class="detail-value">{{ selectedLead.lead_score || 0 }}/100</span>
@@ -352,6 +329,10 @@
               <span class="material-icons">lightbulb</span>
               Beispiel-Keywords
             </button>
+            <button @click="startNewSearch" class="btn-secondary">
+              <span class="material-icons">refresh</span>
+              Neue Suche
+            </button>
             <button @click="clearResults" class="btn-secondary">
               <span class="material-icons">delete</span>
               Ergebnisse löschen
@@ -364,7 +345,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { $fetch } from 'ofetch'
 
 // Refs
@@ -384,11 +365,57 @@ const feedbackMessage = ref('')
 const feedbackType = ref('success')
 let feedbackTimeout = null
 
+// localStorage Keys
+const STORAGE_KEYS = {
+  RESEARCH_RESULTS: 'leadpro_research_results',
+  SEARCH_KEYWORD: 'leadpro_search_keyword',
+  LOCATION: 'leadpro_location',
+  WEBSITE_QUALITY: 'leadpro_website_quality',
+  MIN_RATING: 'leadpro_min_rating',
+  MAX_RESULTS: 'leadpro_max_results',
+  SCORE_FILTER: 'leadpro_score_filter'
+}
+
 function showFeedback(msg, type = 'success') {
   feedbackMessage.value = msg
   feedbackType.value = type
   if (feedbackTimeout) clearTimeout(feedbackTimeout)
   feedbackTimeout = setTimeout(() => { feedbackMessage.value = '' }, 2500)
+}
+
+// localStorage Funktionen
+const saveToStorage = (key, data) => {
+  try {
+    if (process.client) {
+      localStorage.setItem(key, JSON.stringify(data))
+    }
+  } catch (error) {
+    console.error('Fehler beim Speichern in localStorage:', error)
+  }
+}
+
+const loadFromStorage = (key, defaultValue = null) => {
+  try {
+    if (process.client) {
+      const item = localStorage.getItem(key)
+      return item ? JSON.parse(item) : defaultValue
+    }
+  } catch (error) {
+    console.error('Fehler beim Laden aus localStorage:', error)
+  }
+  return defaultValue
+}
+
+const clearStorage = () => {
+  try {
+    if (process.client) {
+      Object.values(STORAGE_KEYS).forEach(key => {
+        localStorage.removeItem(key)
+      })
+    }
+  } catch (error) {
+    console.error('Fehler beim Löschen des localStorage:', error)
+  }
 }
 
 // Computed
@@ -426,6 +453,18 @@ const filteredResults = computed(() => {
   return filtered.sort((a, b) => (b.lead_score || 0) - (a.lead_score || 0))
 })
 
+// Watch für Filter-Änderungen
+const saveFilterSettings = () => {
+  saveToStorage(STORAGE_KEYS.WEBSITE_QUALITY, websiteQuality.value)
+  saveToStorage(STORAGE_KEYS.MIN_RATING, minRating.value)
+  saveToStorage(STORAGE_KEYS.SCORE_FILTER, scoreFilter.value)
+}
+
+// Watch für Filter-Änderungen
+watch(websiteQuality, saveFilterSettings)
+watch(minRating, saveFilterSettings)
+watch(scoreFilter, saveFilterSettings)
+
 // Methods
 const startResearch = async () => {
   if (!searchKeyword.value.trim()) return
@@ -442,6 +481,16 @@ const startResearch = async () => {
     
     if (response.success) {
       researchResults.value = response.results
+      
+      // Speichere Ergebnisse und Suchparameter in localStorage
+      saveToStorage(STORAGE_KEYS.RESEARCH_RESULTS, response.results)
+      saveToStorage(STORAGE_KEYS.SEARCH_KEYWORD, searchKeyword.value)
+      saveToStorage(STORAGE_KEYS.LOCATION, location.value)
+      saveToStorage(STORAGE_KEYS.WEBSITE_QUALITY, websiteQuality.value)
+      saveToStorage(STORAGE_KEYS.MIN_RATING, minRating.value)
+      saveToStorage(STORAGE_KEYS.MAX_RESULTS, maxResults.value)
+      saveToStorage(STORAGE_KEYS.SCORE_FILTER, scoreFilter.value)
+      
       showFeedback(`${response.results.length} Leads gefunden!`, 'success')
       
       // Keyword-Vorschläge generieren
@@ -657,7 +706,62 @@ const showSampleKeywords = () => {
 const clearResults = () => {
   researchResults.value = []
   keywordSuggestions.value = []
+  clearStorage()
   showFeedback('Ergebnisse gelöscht!', 'success')
+}
+
+const startNewSearch = () => {
+  // Lösche aktuelle Ergebnisse und Parameter
+  researchResults.value = []
+  keywordSuggestions.value = []
+  searchKeyword.value = ''
+  
+  // Behalte nur die Standardwerte
+  location.value = 'Berlin, Deutschland'
+  websiteQuality.value = 'all'
+  minRating.value = 0
+  maxResults.value = 60
+  scoreFilter.value = 'all'
+  
+  // Lösche localStorage
+  clearStorage()
+  
+  showFeedback('Bereit für neue Suche!', 'success')
+}
+
+const markAsUnsuitable = async (lead) => {
+  if (!confirm('Lead als ungeeignet markieren? Dieser Lead wird bei zukünftigen Suchen nicht mehr angezeigt.')) {
+    return
+  }
+  
+  try {
+    // Speichere den Lead als ungeeignet in der Datenbank
+    const response = await $fetch('/api/leads', {
+      method: 'POST',
+      body: {
+        name: lead.name,
+        email: '',
+        phone: lead.phone || '',
+        website: lead.website || '',
+        address: lead.address || '',
+        business_category: lead.category || '',
+        lead_score: 0,
+        status: 'Neu',
+        urgency_level: 'Niedrig',
+        notes: 'Als ungeeignet markiert',
+        is_unsuitable: true
+      }
+    })
+    
+    if (response.success) {
+      // Entferne den Lead aus den aktuellen Ergebnissen
+      researchResults.value = researchResults.value.filter(l => l.id !== lead.id)
+      showFeedback('Lead als ungeeignet markiert!', 'success')
+    }
+  } catch (error) {
+    console.error('Fehler beim Markieren als ungeeignet:', error)
+    showFeedback('Fehler beim Markieren als ungeeignet!', 'error')
+  }
 }
 
 const formatNumber = (num) => {
@@ -690,6 +794,33 @@ const getUrgencyClass = (urgency) => {
 
 onMounted(() => {
   loadSavedLeads()
+  
+  // Lade gespeicherte Suchergebnisse und Parameter
+  const savedResults = loadFromStorage(STORAGE_KEYS.RESEARCH_RESULTS, [])
+  const savedKeyword = loadFromStorage(STORAGE_KEYS.SEARCH_KEYWORD, '')
+  const savedLocation = loadFromStorage(STORAGE_KEYS.LOCATION, 'Berlin, Deutschland')
+  const savedWebsiteQuality = loadFromStorage(STORAGE_KEYS.WEBSITE_QUALITY, 'all')
+  const savedMinRating = loadFromStorage(STORAGE_KEYS.MIN_RATING, 0)
+  const savedMaxResults = loadFromStorage(STORAGE_KEYS.MAX_RESULTS, 60)
+  const savedScoreFilter = loadFromStorage(STORAGE_KEYS.SCORE_FILTER, 'all')
+  
+  // Stelle gespeicherte Werte wieder her
+  if (savedResults.length > 0) {
+    researchResults.value = savedResults
+    searchKeyword.value = savedKeyword
+    location.value = savedLocation
+    websiteQuality.value = savedWebsiteQuality
+    minRating.value = savedMinRating
+    maxResults.value = savedMaxResults
+    scoreFilter.value = savedScoreFilter
+    
+    // Generiere Keyword-Vorschläge für gespeicherte Suche
+    if (savedKeyword) {
+      generateKeywordSuggestions(savedKeyword)
+    }
+    
+    showFeedback(`${savedResults.length} gespeicherte Ergebnisse geladen!`, 'success')
+  }
 })
 </script>
 
@@ -986,6 +1117,17 @@ onMounted(() => {
   justify-content: center;
 }
 
+.unsuitable-btn {
+  background: #fef2f2;
+  color: #dc2626;
+  border-color: #fecaca;
+}
+
+.unsuitable-btn:hover {
+  background: #fee2e2;
+  border-color: #fca5a5;
+}
+
 .saved-check {
   color: var(--color-success);
   font-size: var(--font-size-lg);
@@ -1227,6 +1369,21 @@ onMounted(() => {
   gap: var(--spacing-3);
   justify-content: center;
   margin-top: var(--spacing-8);
+  flex-wrap: wrap;
+}
+
+.quick-actions .btn-secondary {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+  padding: var(--spacing-3) var(--spacing-4);
+  font-size: var(--font-size-sm);
+  transition: all 0.2s ease;
+}
+
+.quick-actions .btn-secondary:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
 /* Responsive Design */

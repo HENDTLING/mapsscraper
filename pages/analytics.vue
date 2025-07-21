@@ -38,6 +38,11 @@
             <span class="nav-text">Recherche</span>
           </NuxtLink>
           
+          <NuxtLink to="/lists" class="nav-item" active-class="active">
+            <span class="nav-icon material-icons">list</span>
+            <span class="nav-text">Listen</span>
+          </NuxtLink>
+          
           <NuxtLink to="/analytics" class="nav-item" active-class="active">
             <span class="nav-icon material-icons">bar_chart</span>
             <span class="nav-text">Analytics</span>
@@ -78,7 +83,9 @@
                 <div class="stat-info">
                   <div class="stat-number">{{ totalLeads }}</div>
                   <div class="stat-label">Gesamte Leads</div>
-                  <div class="stat-change positive">+12% vs. letzter Monat</div>
+                  <div class="stat-change" :class="growth >= 0 ? 'positive' : 'negative'">
+                    {{ growth >= 0 ? '+' : '' }}{{ growth }}% vs. letzter Monat
+                  </div>
                 </div>
               </div>
               
@@ -87,7 +94,7 @@
                   <span class="material-icons">track_changes</span>
                 </div>
                 <div class="stat-info">
-                  <div class="stat-number">{{ conversionRate }}%</div>
+                  <div class="stat-number">{{ conversionRate }}</div>
                   <div class="stat-label">Conversion Rate</div>
                   <div class="stat-change positive">+5% vs. letzter Monat</div>
                 </div>
@@ -98,7 +105,7 @@
                   <span class="material-icons">euro</span>
                 </div>
                 <div class="stat-info">
-                  <div class="stat-number">€{{ totalRevenue }}</div>
+                  <div class="stat-number">{{ totalRevenue }}</div>
                   <div class="stat-label">Gesamtumsatz</div>
                   <div class="stat-change positive">+18% vs. letzter Monat</div>
                 </div>
@@ -109,7 +116,7 @@
                   <span class="material-icons">schedule</span>
                 </div>
                 <div class="stat-info">
-                  <div class="stat-number">{{ avgResponseTime }}h</div>
+                  <div class="stat-number">{{ avgResponseTime }}</div>
                   <div class="stat-label">Ø Reaktionszeit</div>
                   <div class="stat-change negative">+2h vs. letzter Monat</div>
                 </div>
@@ -203,16 +210,19 @@
             </div>
             
             <div class="chart-container">
-              <div class="chart-placeholder">
+              <div v-if="chartData.length === 0" class="chart-empty">
                 <div class="chart-icon">
                   <span class="material-icons">bar_chart</span>
                 </div>
-                <h4>Performance Chart</h4>
-                <p>Hier würde ein echtes Chart mit Chart.js oder D3.js angezeigt</p>
-                <div class="chart-mock">
+                <h4>Keine Daten verfügbar</h4>
+                <p>Für den ausgewählten Zeitraum sind noch keine Daten vorhanden.</p>
+              </div>
+              <div v-else class="chart-content">
+                <div class="chart-bars">
                   <div class="chart-bar" v-for="(value, index) in chartData" :key="index">
                     <div class="bar-fill" :style="{ height: value + '%' }"></div>
                     <span class="bar-label">{{ getMonthLabel(index) }}</span>
+                    <span class="bar-value">{{ value }}</span>
                   </div>
                 </div>
               </div>
@@ -260,7 +270,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { $fetch } from 'ofetch'
 
 const isLoading = ref(false)
@@ -269,11 +279,19 @@ const feedbackType = ref('success')
 const selectedPeriod = ref('month')
 const chartMetric = ref('leads')
 
-// Mock data
-const totalLeads = ref(1247)
-const conversionRate = ref(23.5)
-const totalRevenue = ref(45600)
-const avgResponseTime = ref(4.2)
+// Real data from API
+const analyticsData = ref({
+  totalLeads: 0,
+  conversionRate: 0,
+  totalRevenue: 0,
+  avgResponseTime: 0,
+  pipelineStages: [],
+  leadSources: [],
+  chartData: [],
+  topSources: [],
+  topConversions: [],
+  growth: 0
+})
 
 const timePeriods = [
   { label: '7 Tage', value: 'week' },
@@ -282,36 +300,17 @@ const timePeriods = [
   { label: '1 Jahr', value: 'year' }
 ]
 
-const pipelineStages = ref([
-  { status: 'new', label: 'Neu', count: 45, percentage: 35, value: 12500 },
-  { status: 'contacted', label: 'Kontaktiert', count: 32, percentage: 25, value: 8900 },
-  { status: 'qualified', label: 'Qualifiziert', count: 28, percentage: 22, value: 7800 },
-  { status: 'proposal', label: 'Angebot', count: 15, percentage: 12, value: 4200 },
-  { status: 'closed', label: 'Geschlossen', count: 8, percentage: 6, value: 2200 }
-])
-
-const leadSources = ref([
-  { name: 'Google Maps', icon: 'location_on', description: 'Direkte Suche', leads: 456, conversion: 28, revenue: 15600 },
-  { name: 'Keyword Research', icon: 'search', description: 'SEO-basiert', leads: 234, conversion: 32, revenue: 8900 },
-  { name: 'Referrals', icon: 'people', description: 'Empfehlungen', leads: 89, conversion: 45, revenue: 4200 },
-  { name: 'Social Media', icon: 'share', description: 'LinkedIn & Co.', leads: 67, conversion: 18, revenue: 2100 }
-])
-
-const chartData = ref([65, 72, 68, 85, 78, 92, 88, 76, 84, 91, 87, 95])
-
-const topSources = ref([
-  { name: 'Google Maps', value: '456 Leads' },
-  { name: 'Keyword Research', value: '234 Leads' },
-  { name: 'Referrals', value: '89 Leads' },
-  { name: 'Social Media', value: '67 Leads' }
-])
-
-const topConversions = ref([
-  { name: 'Referrals', rate: 45 },
-  { name: 'Keyword Research', rate: 32 },
-  { name: 'Google Maps', rate: 28 },
-  { name: 'Social Media', rate: 18 }
-])
+// Computed properties for real data
+const totalLeads = computed(() => analyticsData.value.totalLeads || '-')
+const conversionRate = computed(() => analyticsData.value.conversionRate ? `${analyticsData.value.conversionRate}%` : '-')
+const totalRevenue = computed(() => analyticsData.value.totalRevenue ? `€${analyticsData.value.totalRevenue.toLocaleString()}` : '-')
+const avgResponseTime = computed(() => analyticsData.value.avgResponseTime ? `${analyticsData.value.avgResponseTime}h` : '-')
+const pipelineStages = computed(() => analyticsData.value.pipelineStages || [])
+const leadSources = computed(() => analyticsData.value.leadSources || [])
+const chartData = computed(() => analyticsData.value.chartData || [])
+const topSources = computed(() => analyticsData.value.topSources || [])
+const topConversions = computed(() => analyticsData.value.topConversions || [])
+const growth = computed(() => analyticsData.value.growth || 0)
 
 function showFeedback(msg, type = 'success') {
   feedbackMessage.value = msg
@@ -324,12 +323,70 @@ const getMonthLabel = (index) => {
   return months[index]
 }
 
-const exportReport = () => {
-  showFeedback('Bericht wird exportiert...', 'success')
+const loadAnalyticsData = async () => {
+  isLoading.value = true
+  try {
+    // Load analytics data from API
+    const response = await $fetch('/api/analytics', {
+      params: { period: selectedPeriod.value }
+    })
+    
+    if (response.success) {
+      analyticsData.value = response.data
+      showFeedback('Analytics-Daten geladen!', 'success')
+    } else {
+      showFeedback('Fehler beim Laden der Analytics-Daten', 'error')
+    }
+  } catch (error) {
+    console.error('Fehler beim Laden der Analytics-Daten:', error)
+    showFeedback('Fehler beim Laden der Analytics-Daten', 'error')
+    
+    // Fallback to empty data structure
+    analyticsData.value = {
+      totalLeads: 0,
+      conversionRate: 0,
+      totalRevenue: 0,
+      avgResponseTime: 0,
+      pipelineStages: [],
+      leadSources: [],
+      chartData: [],
+      topSources: [],
+      topConversions: [],
+      growth: 0
+    }
+  } finally {
+    isLoading.value = false
+  }
 }
 
+const exportReport = async () => {
+  try {
+    const response = await $fetch('/api/analytics/export', {
+      params: { period: selectedPeriod.value, format: 'pdf' }
+    })
+    
+    if (response.success) {
+      const blob = new Blob([response.data], { type: 'application/pdf' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `analytics-report-${selectedPeriod.value}.pdf`
+      a.click()
+      window.URL.revokeObjectURL(url)
+      showFeedback('Bericht exportiert!', 'success')
+    }
+  } catch (error) {
+    showFeedback('Fehler beim Exportieren des Berichts', 'error')
+  }
+}
+
+// Watch for period changes
+watch(selectedPeriod, () => {
+  loadAnalyticsData()
+})
+
 onMounted(() => {
-  // Load analytics data
+  loadAnalyticsData()
 })
 </script>
 

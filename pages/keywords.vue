@@ -38,6 +38,11 @@
             <span class="nav-text">Recherche</span>
           </NuxtLink>
           
+          <NuxtLink to="/lists" class="nav-item" active-class="active">
+            <span class="nav-icon material-icons">list</span>
+            <span class="nav-text">Listen</span>
+          </NuxtLink>
+          
           <NuxtLink to="/analytics" class="nav-item" active-class="active">
             <span class="nav-icon material-icons">bar_chart</span>
             <span class="nav-text">Analytics</span>
@@ -199,26 +204,18 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 
+const keywords = ref([])
 const isLoading = ref(false)
 const feedbackMessage = ref('')
 const feedbackType = ref('success')
 const selectedCategory = ref('')
 
-const keywords = ref([
-  { id: 1, term: 'Webdesign München', category: 'Webdesign', lead_count: 45, last_search: '2024-01-15', status: 'Aktiv' },
-  { id: 2, term: 'Website erstellen', category: 'Webdesign', lead_count: 32, last_search: '2024-01-14', status: 'Aktiv' },
-  { id: 3, term: 'Online Marketing', category: 'Marketing', lead_count: 28, last_search: '2024-01-13', status: 'Aktiv' },
-  { id: 4, term: 'SEO Agentur', category: 'Marketing', lead_count: 67, last_search: '2024-01-12', status: 'Aktiv' },
-  { id: 5, term: 'Zahnarzt München', category: 'Gesundheit', lead_count: 23, last_search: '2024-01-11', status: 'Pausiert' },
-  { id: 6, term: 'Anwalt München', category: 'Recht', lead_count: 19, last_search: '2024-01-10', status: 'Aktiv' }
-])
-
 const totalKeywords = computed(() => keywords.value.length)
 const totalLeads = computed(() => keywords.value.reduce((sum, k) => sum + (k.lead_count || 0), 0))
 const avgLeadsPerKeyword = computed(() => totalKeywords.value > 0 ? Math.round(totalLeads.value / totalKeywords.value) : 0)
-const categories = computed(() => [...new Set(keywords.value.map(k => k.category))])
+const categories = computed(() => [...new Set(keywords.value.map(k => k.category).filter(Boolean))])
 
 const filteredKeywords = computed(() => {
   if (!selectedCategory.value) return keywords.value
@@ -231,392 +228,89 @@ function showFeedback(msg, type = 'success') {
   setTimeout(() => { feedbackMessage.value = '' }, 3000)
 }
 
-const getStatusClass = (status) => {
-  switch (status) {
-    case 'Aktiv': return 'status-active'
-    case 'Pausiert': return 'status-paused'
-    case 'Archiviert': return 'status-archived'
-    default: return 'status-active'
+const loadKeywords = async () => {
+  isLoading.value = true
+  try {
+    const response = await $fetch('/api/keywords')
+    if (response.success) {
+      keywords.value = response.data
+      showFeedback(`${keywords.value.length} Keywords geladen!`, 'success')
+    }
+  } catch (error) {
+    showFeedback('Fehler beim Laden der Keywords!', 'error')
+    console.error('Fehler beim Laden der Keywords:', error)
+  } finally {
+    isLoading.value = false
   }
 }
 
 const addKeyword = () => {
-  showFeedback('Keyword-Funktion wird implementiert...', 'success')
+  // Implementierung für Keyword hinzufügen
+  showFeedback('Keyword hinzufügen wird implementiert...', 'success')
 }
 
 const editKeyword = (keyword) => {
-  showFeedback(`Keyword "${keyword.term}" bearbeiten...`, 'success')
+  // Implementierung für Keyword bearbeiten
+  showFeedback('Keyword bearbeiten wird implementiert...', 'success')
 }
 
-const deleteKeyword = (id) => {
-  if (confirm('Keyword wirklich löschen?')) {
-    keywords.value = keywords.value.filter(k => k.id !== id)
-    showFeedback('Keyword gelöscht!', 'success')
+const deleteKeyword = async (id) => {
+  if (!confirm('Keyword wirklich löschen?')) return
+  
+  isLoading.value = true
+  try {
+    const response = await $fetch(`/api/keywords/${id}`, { method: 'DELETE' })
+    if (response.success) {
+      showFeedback('Keyword gelöscht!', 'success')
+      await loadKeywords()
+    }
+  } catch (error) {
+    showFeedback('Fehler beim Löschen!', 'error')
+  } finally {
+    isLoading.value = false
   }
 }
 
 const searchWithKeyword = (keyword) => {
-  showFeedback(`Recherche mit "${keyword.term}" starten...`, 'success')
+  // Implementierung für Recherche mit Keyword
+  showFeedback(`Recherche mit "${keyword.term}" wird gestartet...`, 'success')
 }
 
-const exportKeywords = () => {
-  showFeedback('Keywords werden exportiert...', 'success')
+const exportKeywords = async () => {
+  try {
+    const response = await $fetch('/api/keywords/export?format=csv')
+    if (response.success) {
+      const blob = new Blob([response.data], { type: 'text/csv' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'keywords.csv'
+      a.click()
+      window.URL.revokeObjectURL(url)
+      showFeedback('Keywords exportiert!', 'success')
+    }
+  } catch (error) {
+    showFeedback('Fehler beim Export!', 'error')
+  }
+}
+
+const getStatusClass = (status) => {
+  switch (status?.toLowerCase()) {
+    case 'aktiv':
+    case 'active':
+      return 'status-active'
+    case 'pausiert':
+    case 'paused':
+      return 'status-paused'
+    case 'archiviert':
+    case 'archived':
+      return 'status-archived'
+    default:
+      return 'status-active'
+  }
 }
 
 onMounted(() => {
-  // Keywords laden
+  loadKeywords()
 })
-</script>
-
-<style scoped>
-.dashboard-layout {
-  display: flex;
-  min-height: 100vh;
-  background: #f8fafc;
-}
-
-.sidebar {
-  width: 280px;
-  background: #1e293b;
-  color: white;
-  padding: 24px;
-  position: fixed;
-  height: 100vh;
-  overflow-y: auto;
-}
-
-.sidebar-header {
-  margin-bottom: 32px;
-}
-
-.logo {
-  font-size: 24px;
-  font-weight: 700;
-  margin: 0 0 8px 0;
-  color: #3b82f6;
-}
-
-.tagline {
-  font-size: 14px;
-  color: #94a3b8;
-  margin: 0;
-}
-
-.sidebar-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  border-radius: 8px;
-  color: #cbd5e1;
-  text-decoration: none;
-  transition: all 0.2s;
-}
-
-.nav-item:hover {
-  background: #334155;
-  color: white;
-}
-
-.nav-item.active {
-  background: #3b82f6;
-  color: white;
-}
-
-.nav-icon {
-  font-size: 20px;
-}
-
-.main-content {
-  flex: 1;
-  margin-left: 280px;
-  padding: 24px;
-}
-
-.top-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 32px;
-  padding: 24px;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.header-left h2 {
-  margin: 0 0 4px 0;
-  font-size: 24px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.breadcrumb {
-  margin: 0;
-  color: #64748b;
-  font-size: 14px;
-}
-
-.keywords-content {
-  background: white;
-  border-radius: 12px;
-  padding: 24px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
-.keywords-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
-}
-
-.keyword-card {
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 20px;
-  transition: all 0.2s;
-}
-
-.keyword-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  transform: translateY(-2px);
-}
-
-.keyword-card h3 {
-  margin: 0 0 12px 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #1e293b;
-}
-
-.keyword-card p {
-  margin: 8px 0;
-  color: #64748b;
-  font-size: 14px;
-}
-
-.content-area {
-  padding: var(--spacing-8);
-}
-
-.keyword-stats {
-  margin-bottom: var(--spacing-8);
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-6);
-}
-
-.section-header h3 {
-  margin: 0;
-  color: var(--color-gray-900);
-}
-
-.keyword-controls {
-  display: flex;
-  gap: var(--spacing-3);
-}
-
-.keywords-section {
-  margin-bottom: var(--spacing-8);
-}
-
-.keywords-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-  gap: var(--spacing-6);
-}
-
-.keyword-card {
-  background: var(--color-white);
-  border: 1px solid var(--color-gray-200);
-  border-radius: var(--radius-xl);
-  padding: var(--spacing-6);
-  transition: all 0.2s ease;
-}
-
-.keyword-card:hover {
-  box-shadow: var(--shadow-md);
-  transform: translateY(-2px);
-}
-
-.keyword-header {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-4);
-  margin-bottom: var(--spacing-4);
-}
-
-.keyword-icon {
-  width: 48px;
-  height: 48px;
-  background: var(--color-primary-50);
-  border-radius: var(--radius-lg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-primary-600);
-}
-
-.keyword-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.keyword-term {
-  margin: 0 0 var(--spacing-2) 0;
-  font-size: var(--font-size-lg);
-  font-weight: 600;
-  color: var(--color-gray-900);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.keyword-category {
-  display: flex;
-  align-items: center;
-}
-
-.category-badge {
-  background: var(--color-gray-100);
-  color: var(--color-gray-700);
-  padding: var(--spacing-1) var(--spacing-2);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-xs);
-  font-weight: 500;
-}
-
-.keyword-actions {
-  display: flex;
-  gap: var(--spacing-2);
-}
-
-.keyword-stats {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--spacing-4);
-  margin-bottom: var(--spacing-4);
-}
-
-.keyword-stat {
-  text-align: center;
-}
-
-.stat-label {
-  display: block;
-  font-size: var(--font-size-xs);
-  color: var(--color-gray-500);
-  margin-bottom: var(--spacing-1);
-}
-
-.stat-value {
-  display: block;
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  color: var(--color-gray-900);
-}
-
-.status-badge {
-  padding: var(--spacing-1) var(--spacing-2);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-xs);
-  font-weight: 500;
-}
-
-.status-badge.status-active {
-  background: var(--color-success);
-  color: var(--color-white);
-}
-
-.status-badge.status-paused {
-  background: var(--color-warning);
-  color: var(--color-white);
-}
-
-.status-badge.status-archived {
-  background: var(--color-gray-400);
-  color: var(--color-white);
-}
-
-.keyword-actions-bottom {
-  display: flex;
-  justify-content: center;
-}
-
-.btn-sm {
-  padding: var(--spacing-2) var(--spacing-3);
-  font-size: var(--font-size-xs);
-}
-
-.empty-state {
-  text-align: center;
-  padding: var(--spacing-12);
-  background: var(--color-white);
-  border: 1px solid var(--color-gray-200);
-  border-radius: var(--radius-xl);
-  margin-top: var(--spacing-8);
-}
-
-.empty-icon {
-  font-size: 4rem;
-  margin-bottom: var(--spacing-4);
-  color: var(--color-gray-400);
-}
-
-.empty-state h3 {
-  margin-bottom: var(--spacing-2);
-  color: var(--color-gray-900);
-}
-
-.empty-state p {
-  color: var(--color-gray-600);
-  margin-bottom: var(--spacing-6);
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .content-area {
-    padding: var(--spacing-4);
-  }
-  
-  .section-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spacing-4);
-  }
-  
-  .keyword-controls {
-    width: 100%;
-    justify-content: space-between;
-  }
-  
-  .keywords-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .keyword-stats {
-    grid-template-columns: 1fr;
-    gap: var(--spacing-2);
-  }
-  
-  .keyword-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spacing-3);
-  }
-  
-  .keyword-actions {
-    align-self: flex-end;
-  }
-}
-</style> 
+</script> 
