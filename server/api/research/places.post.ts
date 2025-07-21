@@ -1,25 +1,57 @@
 import { $fetch } from 'ofetch'
 
-// Helper-Funktion für Delays zwischen Requests
+// Helper function to delay execution (Google requires delay between paginated requests)
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
-// Helper-Funktion um Duplikate zu entfernen
-const removeDuplicates = (places: any[]) => {
-  const seen = new Set()
-  return places.filter(place => {
-    const key = place.id || place.name + place.address
-    if (seen.has(key)) {
-      return false
+// Helper function to fetch places with pagination
+async function fetchPlacesWithPagination(query: string, apiKey: string, maxResults: number = 60) {
+  const allResults: any[] = []
+  let nextPageToken: string | undefined
+  let pageCount = 0
+  const maxPages = 3 // Google Places API supports up to 3 pages (60 results total)
+
+  while (pageCount < maxPages && allResults.length < maxResults) {
+    let url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${query}&key=${apiKey}`
+    
+    // Add next_page_token if we have one (for subsequent requests)
+    if (nextPageToken) {
+      url += `&pagetoken=${nextPageToken}`
     }
-    seen.add(key)
-    return true
-  })
+
+    try {
+      const response = await $fetch(url)
+      
+      if (!response.results) {
+        break
+      }
+
+      // Add results to our collection
+      allResults.push(...response.results)
+      
+      // Check if there's a next page token
+      nextPageToken = response.next_page_token
+      pageCount++
+
+      // If we have a next page token and haven't reached our limits, wait before next request
+      // Google requires a short delay (typically 2-3 seconds) before using next_page_token
+      if (nextPageToken && pageCount < maxPages && allResults.length < maxResults) {
+        await delay(3000) // 3 second delay as recommended by Google
+      } else {
+        break
+      }
+    } catch (error) {
+      console.error(`Error fetching page ${pageCount + 1}:`, error)
+      break
+    }
+  }
+
+  return allResults.slice(0, maxResults) // Ensure we don't exceed maxResults
 }
 
 export default defineEventHandler(async (event) => {
   try {
     const body = await readBody(event)
-    const { keyword, location, maxResults = 60 } = body
+    const { keyword, location, maxResults = 25, enablePagination = false } = body
 
     if (!keyword) {
       throw createError({
@@ -36,117 +68,32 @@ export default defineEventHandler(async (event) => {
       })
     }
 
-    // Verschiedene Suchstrategien für mehr Ergebnisse
-    const searchStrategies = [
-      { query: `${keyword} ${location}`, type: 'textsearch' },
-      { query: `${keyword} in ${location}`, type: 'textsearch' },
-      { query: `${keyword} near ${location}`, type: 'textsearch' },
-      { query: `${location} ${keyword}`, type: 'textsearch' },
-      { query: `${keyword}`, location: location, type: 'nearbysearch' },
-      // Zusätzliche Strategien für mehr Ergebnisse
-      { query: `${keyword} ${location} anwalt`, type: 'textsearch' },
-      { query: `${keyword} ${location} rechtsanwalt`, type: 'textsearch' },
-      { query: `${keyword} ${location} kanzlei`, type: 'textsearch' },
-      { query: `${location} ${keyword} anwalt`, type: 'textsearch' },
-      { query: `${location} ${keyword} rechtsanwalt`, type: 'textsearch' }
-    ]
-
-    let allPlaces: any[] = []
-    const seenPlaceIds = new Set()
-
-    // Führe mehrere Suchstrategien aus
-    for (const strategy of searchStrategies) {
-      try {
-        let url: string
-        
-        if (strategy.type === 'textsearch') {
-          const query = encodeURIComponent(strategy.query)
-          url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${query}&key=${apiKey}`
-        } else {
-          // Nearby Search benötigt Koordinaten
-          const geocodeUrl = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(location)}&key=${apiKey}`
-          const geocodeRes = await $fetch(geocodeUrl)
-          
-          if (geocodeRes.results && geocodeRes.results[0]) {
-            const { lat, lng } = geocodeRes.results[0].geometry.location
-            url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=50000&keyword=${encodeURIComponent(keyword)}&key=${apiKey}`
-          } else {
-            continue
-          }
-        }
-
-        // Erste Seite holen
-        let response = await $fetch(url)
-        
-        if (response.results) {
-          // Füge nur neue Places hinzu
-          const newPlaces = response.results.filter((place: any) => {
-            if (seenPlaceIds.has(place.place_id)) {
-              return false
-            }
-            seenPlaceIds.add(place.place_id)
-            return true
-          })
-          
-          allPlaces.push(...newPlaces)
-        }
-
-        // Pagination: Hole weitere Seiten falls verfügbar
-        let pageToken = response.next_page_token
-        let pageCount = 1
-        
-        while (pageToken && pageCount < 3) { // Maximal 3 Seiten pro Strategie
-          await delay(2000) // PageToken benötigt Zeit zum Aktivieren
-          
-          try {
-            const paginationUrl = `${url}&pagetoken=${pageToken}`
-            response = await $fetch(paginationUrl)
-            
-            if (response.results) {
-              const newPlaces = response.results.filter((place: any) => {
-                if (seenPlaceIds.has(place.place_id)) {
-                  return false
-                }
-                seenPlaceIds.add(place.place_id)
-                return true
-              })
-              
-              allPlaces.push(...newPlaces)
-            }
-            
-            pageToken = response.next_page_token
-            pageCount++
-          } catch (error) {
-            console.error(`Fehler bei Pagination für ${strategy.query}:`, error)
-            break
-          }
-        }
-
-        // Kurze Pause zwischen Strategien
-        await delay(500)
-        
-        // Wenn wir genug Ergebnisse haben, stoppe
-        if (allPlaces.length >= maxResults) {
-          break
-        }
-        
-      } catch (error) {
-        console.error(`Fehler bei Suchstrategie ${strategy.query}:`, error)
-        continue
+    // Google Places Text Search API
+    const query = encodeURIComponent(`${keyword} ${location}`)
+    
+    let placesResults: any[]
+    
+    if (enablePagination && maxResults > 20) {
+      // Use pagination for larger result sets
+      placesResults = await fetchPlacesWithPagination(query, apiKey, Math.min(maxResults, 60))
+    } else {
+      // Single request for smaller result sets
+      const url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${query}&key=${apiKey}`
+      const response = await $fetch(url)
+      
+      if (!response.results) {
+        throw createError({
+          statusCode: 500,
+          statusMessage: 'Keine Ergebnisse von Google Places API'
+        })
       }
+      
+      placesResults = response.results.slice(0, maxResults)
     }
-
-    // Entferne Duplikate und begrenze auf maxResults
-    allPlaces = removeDuplicates(allPlaces).slice(0, maxResults)
 
     // Hole Details für jedes Place (mit Batching)
     const places = await Promise.all(
-      allPlaces.map(async (place, index) => {
-        // Verzögerung zwischen Details-Requests
-        if (index > 0 && index % 5 === 0) {
-          await delay(100)
-        }
-
+      placesResults.map(async (place) => {
         // Details holen
         let details = {}
         if (place.place_id) {
@@ -178,8 +125,8 @@ export default defineEventHandler(async (event) => {
       success: true,
       data: {
         places,
-        totalFound: places.length,
-        searchStrategies: searchStrategies.length
+        totalResults: places.length,
+        paginationUsed: enablePagination && maxResults > 20
       }
     }
 
